@@ -1,0 +1,32 @@
+---
+title: "220816_YoderSC_02_dim-reduction"
+author: "T.C. Howton"
+date: '2022-08-16'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Project Overview
+This project will use Liana and NichNet to explore cell-cell communication in PKD samples form Dr. Yoder's lab. This project will reproduce Kasi's work with updated NicheNet and adding Liana.
+
+## Script Purpose
+This script will perform quality control for the ift88 mutant samples from Dr. Yoder's lab. 
+
+### Load Packages
+
+```{r Load-Packages, echo=FALSE}
+library(Seurat)
+```
+
+
+### Load data
+
+```{r Load-Data}
+# Loading in the filtered seurat object from the qc script "/data/user/tchowton/220804_YoderSC/Scripts/220815_YoderSC_01_qc.Rmd"
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220816_YoderSC_01-ift88-qc.rds")
+
+dim(alldata) #20405 20625
+```

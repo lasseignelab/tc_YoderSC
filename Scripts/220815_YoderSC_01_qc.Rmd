@@ -1,0 +1,219 @@
+---
+title: "220815_YoderSC_01_qc"
+output: html_document
+date: '2022-08-15'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=24, fig.height=8) 
+```
+
+# Project Overview
+This project will use Liana and NichNet to explore cell-cell communication in PKD samples form Dr. Yoder's lab. This project will reproduce Kasi's work with updated NicheNet and adding Liana.
+
+## Script Purpose
+This script will perform quality control for the ift88 mutant samples from Dr. Yoder's lab. 
+
+### Load Packages
+
+```{r Load-Packages, echo=FALSE}
+library(Seurat)
+```
+
+
+### Load data
+
+```{r Load-Data}
+#KZ1cre-1
+ift88_wt_1 <- Read10X(data.dir = "/data/project/lasseigne_lab/DATASET_dir/Yoder_SC_IFT88_PC2/Raw-Data/KZ1cre-1/filtered_feature_bc_matrix/")
+
+#KZ4cre-2
+ift88_wt_2 <- Read10X(data.dir = "/data/project/lasseigne_lab/DATASET_dir/Yoder_SC_IFT88_PC2/Raw-Data/KZ4cre-2/filtered_feature_bc_matrix/")
+
+#KZ2Cre+1
+ift88_ko_1 <- Read10X(data.dir = "/data/project/lasseigne_lab/DATASET_dir/Yoder_SC_IFT88_PC2/Raw-Data/KZ2Cre+1/filtered_feature_bc_matrix/")
+
+#KZ3Cre+1
+ift88_ko_2 <- Read10X(data.dir = "/data/project/lasseigne_lab/DATASET_dir/Yoder_SC_IFT88_PC2/Raw-Data/KZ3Cre+2/filtered_feature_bc_matrix/")
+```
+
+### Create Seurat objects
+Creating the Seurat objects from the loaded matixes
+
+```{r Create-Seurat-Objects}
+wt_1_obj <- CreateSeuratObject(counts = ift88_wt_1, project = 'wt-1')
+wt_2_obj <- CreateSeuratObject(counts = ift88_wt_2, project = 'wt-2')
+ko_1_obj <- CreateSeuratObject(counts = ift88_ko_1, project = 'ko-1')
+ko_2_obj <- CreateSeuratObject(counts = ift88_ko_2, project = 'ko-2')
+
+# add metadata
+wt_1_obj$type = "Wildtype"
+wt_2_obj$type = "Wildtype"
+ko_1_obj$type = "Mutant"
+ko_2_obj$type = "Mutant"
+
+# Merge datasets into one single seurat object
+alldata <- merge(wt_1_obj, c(wt_2_obj, ko_1_obj, ko_2_obj), add.cell.ids = c("wt_1", "wt_2", "ko_1", "ko_2"))
+
+# remove all objects that will not be used.
+rm(ift88_wt_1, ift88_wt_2, ift88_ko_1, ift88_ko_2, wt_1_obj, wt_2_obj, ko_1_obj, ko_2_obj)
+
+# run garbage collect to free up memory
+gc()
+
+head(alldata@meta.data, 10)
+```
+
+### Calculating QC
+
+```{r Calc-QC}
+# Calculate the mitochondrial read percentage
+alldata <- PercentageFeatureSet(alldata, "^mt-", col.name = "percent_mito")
+
+# Calculate the ribosamal read percentage
+alldata <- PercentageFeatureSet(alldata, "^Rp[sl]", col.name = "percent_ribo")
+
+```
+
+### Plot Initial QC
+```{r Plot-Initial-QC}
+# Create a list of QC features to plot
+feats <- c("nFeature_RNA", "nCount_RNA", "percent_mito", "percent_ribo")
+
+# Plot and save the initial QC figure
+pdf('/data/user/tchowton/220804_YoderSC/Figures/220815_qc-initial.pdf')
+VlnPlot(alldata, group.by = "orig.ident", features = feats, pt.size = 0, ncol = 4) +
+    NoLegend()
+FeatureScatter(alldata, "nCount_RNA", "nFeature_RNA", group.by = "orig.ident", pt.size = 0.5)
+dev.off()
+```
+
+### Filtering 
+
+```{r Filtering}
+# Filter by cell number and feature number
+selected_c <- WhichCells(alldata, expression = nFeature_RNA > 200)
+selected_f <- rownames(alldata)[Matrix::rowSums(alldata) > 3]
+
+data.filt <- subset(alldata, features = selected_f, cells = selected_c)
+dim(data.filt) # 20522 35354
+dim(alldata) # 31053 37576
+```
+
+```{r Plotting-total-top-genes}
+par(mar = c(4, 8, 2, 1))
+C <- data.filt@assays$RNA@counts
+C <- Matrix::t(Matrix::t(C)/Matrix::colSums(C)) * 100
+most_expressed <- order(apply(C, 1, median), decreasing = T)[20:1]
+pdf('/data/user/tchowton/220804_YoderSC/Figures/220815_total-top-genes-filtered.pdf')
+boxplot(as.matrix(Matrix::t(C[most_expressed, ])), cex = 0.1, las = 1, xlab = "% total count per cell",
+    col = (scales::hue_pal())(20)[20:1], horizontal = TRUE)
+dev.off()
+```
+
+```{r}
+selected_mito <- WhichCells(data.filt, expression = percent_mito < 20)
+selected_ribo <- WhichCells(data.filt, expression = percent_ribo > 5)
+
+# and subset the object to only keep those cells
+data.filt <- subset(data.filt, cells = selected_mito)
+data.filt <- subset(data.filt, cells = selected_ribo)
+
+dim(data.filt)
+
+table(data.filt$orig.ident)
+```
+
+### Filtering technical genes
+As the level of expression of mitochondrial and MALAT1 genes are judged as mainly technical, it can be wise to remove them from the dataset bofore any further analysis.
+
+```{r}
+dim(data.filt)
+
+# Filter MALAT1
+data.filt <- data.filt[!grepl("Malat1", rownames(data.filt)), ]
+
+# Filter Mitocondrial
+data.filt <- data.filt[!grepl("^mt-", rownames(data.filt)), ]
+
+# Filter Ribossomal gene (optional if that is a problem on your data) data.filt
+data.filt <- data.filt[ ! grepl('^Rp[sl]', rownames(data.filt)), ]
+
+dim(data.filt)
+```
+
+### Cell Cycle Scoring
+
+```{r}
+# Before running CellCycleScoring the data need to be normalized and logtransformed.
+data.filt = NormalizeData(data.filt)
+
+#reading in cell cycle gene list (downloded from https://github.com/hbc/tinyatlas/blob/master/cell_cycle/Mus_musculus.csv)
+cell_cycle_gene <- read.delim("/data/user/tchowton/220804_YoderSC/Data/mouse-cell-cycle-genes.txt", header = FALSE)
+
+data.filt <- CellCycleScoring(object = data.filt, g2m.features = cell_cycle_gene[1:54,],
+    s.features = cell_cycle_gene[55:97,])
+
+head(data.filt@meta.data)
+
+#plotting cell cycle scores per sample
+VlnPlot(data.filt, 
+        features = c("S.Score", "G2M.Score"), 
+        group.by = "orig.ident", 
+        ncol = 4, 
+        pt.size = 0)
+```
+
+### Plotting Filtered QC
+```{r Plot-filtered-QC}
+# Create a list of QC features to plot
+feats <- c("nFeature_RNA", "nCount_RNA", "percent_mito", "percent_ribo")
+
+# Plot and save the initial QC figure
+pdf('/data/user/tchowton/220804_YoderSC/Figures/220816_qc-filtered.pdf')
+VlnPlot(data.filt, 
+        group.by = "orig.ident", 
+        features = feats, 
+        pt.size = 0, 
+        ncol = 4) +
+    NoLegend()
+FeatureScatter(alldata, "nCount_RNA", "nFeature_RNA", group.by = "orig.ident", pt.size = 0.5)
+VlnPlot(data.filt, 
+        features = c("S.Score", "G2M.Score"), 
+        group.by = "orig.ident", 
+        ncol = 4, 
+        pt.size = 0)
+dev.off()
+```
+
+### Save Data
+```{r}
+saveRDS(data.filt, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220816_YoderSC_01-ift88-qc.rds")
+
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
