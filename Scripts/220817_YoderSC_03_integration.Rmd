@@ -1,0 +1,154 @@
+---
+title: "220817_YoderSC_03_integration"
+author: "T.C. Howton"
+date: '2022-08-17'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Project Overview
+This project will use Liana and NichNet to explore cell-cell communication in PKD samples form Dr. Yoder's lab. This project will reproduce Kasi's work with updated NicheNet and adding Liana.
+
+## Script Purpose
+This script will perform quality control for the ift88 mutant samples from Dr. Yoder's lab. 
+
+### Load Packages
+
+```{r Load-Packages, echo=FALSE}
+library(Seurat)
+library(cowplot)
+library(ggplot2)
+library(harmony)
+```
+
+
+### Load data
+
+```{r Load-Data}
+# Loading in the filtered seurat object from the qc script "/data/user/tchowton/220804_YoderSC/Scripts/220815_YoderSC_01_qc.Rmd"
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_02-ift88-dr.rds")
+
+dim(alldata) #20405 20625
+print(names(alldata@reductions)) # "pca"  "umap"
+```
+
+### Split Seurat object into each sample and append to a list
+We split the combined object into a list, with each dataset as an element. 
+
+```{r Split-Seurat-Obj}
+alldata.list <- SplitObject(alldata, split.by = "orig.ident")
+```
+
+### Normalize and Scale Each Obj
+We perform standard preprocessing (log-normalization), and identify variable features individually for each dataset based on a variance stabilizing transformation (vst).
+
+```{r Normalize-Scale}
+for (i in 1:length(alldata.list)) {
+    alldata.list[[i]] <- NormalizeData(alldata.list[[i]], verbose = FALSE)
+    alldata.list[[i]] <- FindVariableFeatures(alldata.list[[i]], selection.method = "vst",
+        nfeatures = 2000, verbose = FALSE)
+}
+
+hvgs_per_dataset <- lapply(alldata.list, function(x) {
+    x@assays$RNA@var.features
+})
+# venn::venn(hvgs_per_dataset,opacity = .4,zcolor = scales::hue_pal()(3),cexsn
+# = 1,cexil = 1,lwd=1,col='white',frame=F,borders = NA)
+
+temp <- unique(unlist(hvgs_per_dataset))
+overlap <- sapply(hvgs_per_dataset, function(x) {
+    temp %in% x
+})
+#pheatmap::pheatmap(t(overlap * 1), cluster_rows = F, color = c("grey90", "grey20"))
+```
+
+### Find-Int-Anchors
+We identify anchors using the FindIntegrationAnchors function, which takes a list of Seurat objects as input.
+
+```{r Find-Int-Anchors}
+alldata.anchors <- FindIntegrationAnchors(object.list = alldata.list,
+                                          dims = 1:30,
+                                          reduction = "cca")
+```
+
+### Data-Integration-CCA
+We then pass these anchors to the IntegrateData function, which returns a Seurat object.
+
+```{r Int-Data-CCA}
+alldata.int <- IntegrateData(anchorset = alldata.anchors, dims = 1:30, new.assay.name = "CCA")
+
+names(alldata.int@assays) # "RNA" "CCA"
+
+# by default, Seurat now sets the integrated assay as the default assay, so any
+# operation you now perform will be on the ingegrated data.
+
+alldata.int@active.assay # "CCA"
+```
+
+### Run Dimensionality reduction on integrated space CCA
+
+```{r DR-CCA}
+alldata.int <- ScaleData(alldata.int, verbose = FALSE)
+alldata.int <- RunPCA(alldata.int, npcs = 30, verbose = FALSE)
+alldata.int <- RunUMAP(alldata.int, dims = 1:30)
+```
+
+```{r DR-CCA-plot}
+plot_grid(ncol = 2,
+  DimPlot(alldata, reduction = "pca", group.by = "orig.ident")+NoAxes()+ggtitle("PCA raw_data"),
+  DimPlot(alldata, reduction = "umap", group.by = "orig.ident")+NoAxes()+ggtitle("UMAP raw_data"),
+  DimPlot(alldata.int, reduction = "pca", group.by = "orig.ident")+NoAxes()+ggtitle("PCA CCA integrated"),
+  DimPlot(alldata.int, reduction = "umap", group.by = "orig.ident")+NoAxes()+ggtitle("UMAP CCA integrated")
+)
+```
+
+### Harmony-Int
+```{r}
+alldata.harmony <- RunHarmony(alldata,
+                              group.by.vars = "orig.ident",
+                              reduction = "pca",
+                              dims.use = 1:50, assay.use = "RNA")
+
+# Here we use all PCs computed from Harmony for UMAP calculation
+
+alldata.int[["harmony"]] <- alldata.harmony[["harmony"]]
+alldata.int <- RunUMAP(alldata.int, dims = 1:50, reduction = "harmony", reduction.name = "umap_harmony")
+```
+
+### Integration Plotting for CCA and Harmony
+```{r}
+p1 <- DimPlot(alldata, reduction = "umap", group.by = "orig.ident") + ggtitle("UMAP raw_data")
+p2 <- DimPlot(alldata.int, reduction = "umap", group.by = "orig.ident") + ggtitle("UMAP CCA")
+p3 <- DimPlot(alldata.int, reduction = "umap_harmony", group.by = "orig.ident") +
+    ggtitle("UMAP Harmony")
+leg <- get_legend(p1)
+
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-preprocessing/220817_int-cca-harmony-umap.pdf')
+gridExtra::grid.arrange(gridExtra::arrangeGrob(p1 + NoLegend() + NoAxes(), p2 + NoLegend() +
+    NoAxes(), p3 + NoLegend() + NoAxes(), nrow = 2),
+    leg, ncol = 2, widths = c(8, 2))
+dev.off()
+
+DimPlot(alldata.int,
+        reduction = "umap_harmony",
+        split.by = "orig.ident") +
+    ggplot2::ggtitle(label = "UMAP Harmony")
+
+```
+
+### Save Data
+```{r SaveData-SessionInfo}
+saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_03-ift88-integration.rds")
+
+sessionInfo()
+```
+
+
+
+
+
+
+

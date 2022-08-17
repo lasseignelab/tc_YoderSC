@@ -19,6 +19,9 @@ This script will perform quality control for the ift88 mutant samples from Dr. Y
 
 ```{r Load-Packages, echo=FALSE}
 library(Seurat)
+library(cowplot)
+library(ggplot2)
+library(scran)
 ```
 
 
@@ -30,3 +33,109 @@ alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220816
 
 dim(alldata) #20405 20625
 ```
+
+### Feature Selection
+
+```{r Feature-Selection}
+# Identifies features that are outliers on a 'mean variability plot'.
+alldata <- FindVariableFeatures(alldata, 
+                                selection.method = "vst",
+                                nfeatures = 2000,
+                                verbose = FALSE,
+                                assay = "RNA")
+
+top20 <- head(VariableFeatures(alldata), 20)
+
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-preprocessing/220816_dr-feature-selection.pdf')
+LabelPoints(plot = VariableFeaturePlot(alldata), points = top20, repel = TRUE)
+dev.off()
+```
+
+### Z-score transformation
+
+Now that the data is prepared, we now proceed with PCA. Since each gene has a different expression level, it means that genes with higher expression values will naturally have higher variation that will be captured by PCA. This means that we need to somehow give each gene a similar weight when performing PCA (see below). The common practice is to center and scale each gene before performing PCA. This exact scaling is called Z-score normalization it is very useful for PCA, clustering and plotting heatmaps.
+Additionally, we can use regression to remove any unwanted sources of variation from the dataset, such as cell cycle, sequencing depth, percent mitocondria. This is achieved by doing a generalized linear regression using these parameters as covariates in the model. Then the residuals of the model are taken as the regressed data. Although perhaps not in the best way, batch effect regression can also be done here.
+
+```{r Z-Scale-Data}
+alldata <- ScaleData(alldata, vars.to.regress = c("percent_mito", "nFeature_RNA", "S.Score", "G2M.Score"))
+```
+
+### PCA
+
+Performing PCA has many useful applications and interpretations, which much depends on the data used. In the case of life sciences, we want to segregate samples based on gene expression patterns in the data.
+
+```{r PCA}
+alldata <- RunPCA(alldata, npcs = 50, verbose = F)
+
+# We then plot the first principal components.
+
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-preprocessing/220816_dr-pca.pdf')
+plot_grid(ncol = 3,
+          DimPlot(alldata, 
+                  reduction = "pca",
+                  group.by = "orig.ident",
+                  dims = 1:2),
+          DimPlot(alldata,
+                  reduction = "pca",
+                  group.by = "orig.ident",
+                  dims = 3:4),
+          DimPlot(alldata,
+                  reduction = "pca",
+                  group.by = "orig.ident",
+                  dims = 5:6))
+VizDimLoadings(alldata, dims = 1:5, reduction = "pca", ncol = 5, balanced = T)
+ElbowPlot(alldata, reduction = "pca", ndims = 50)
+dev.off()
+```
+
+### UMAP
+We can now run UMAP for cell embeddings.
+
+```{r UMAP}
+alldata <- RunUMAP(alldata,
+                   reduction = "pca",
+                   dims = 1:30,
+                   n.components = 2,
+                   n.neighbors = 30,
+                   n.epochs = 200,
+                   min.dist = 0.3,
+                   learning.rate = 1,
+                   spread = 1)
+
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-preprocessing/220817_dr-umap.pdf')
+DimPlot(alldata,
+        reduction = "umap",
+        group.by = "orig.ident") +
+    ggplot2::ggtitle(label = "UMAP_on_PCA")
+dev.off()
+```
+
+### Save Data
+```{r SaveData-SessionInfo}
+saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_02-ift88-dr.rds")
+
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
