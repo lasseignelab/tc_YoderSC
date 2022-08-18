@@ -1,0 +1,97 @@
+---
+title: "220818_YoderSC_04_clustering"
+author: "T.C. Howton"
+date: '2022-08-18'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Project Overview
+This project will use Liana and NichNet to explore cell-cell communication in PKD samples form Dr. Yoder's lab. This project will reproduce Kasi's work with updated NicheNet and adding Liana.
+
+## Script Purpose
+This script will perform quality control for the ift88 mutant samples from Dr. Yoder's lab. 
+
+### Load Packages
+
+```{r Load-Packages, echo=FALSE}
+library(Seurat)
+library(cowplot)
+library(ggplot2)
+library(pheatmap)
+library(rafalib)
+library(clustree)
+```
+
+
+### Load data
+
+```{r Load-Data}
+# Loading in the filtered seurat object from the integration script "/data/user/tchowton/220804_YoderSC/Scripts/220817_YoderSC_03_integration.Rmd"
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_03-ift88-integration.rds")
+
+dim(alldata) #20405 20625
+print(names(alldata@reductions)) # "pca"  "umap"
+```
+
+### Building kNN / SNN graph
+
+The first step into graph clustering is to construct a k-nn graph.
+
+```{r}
+# check that CCA is still the active assay
+alldata@active.assay <- "RNA"
+alldata@active.assay
+
+alldata <- FindNeighbors(alldata, dims = 1:30, reduction = "harmony")
+
+## Computing nearest neighbor graph
+
+## Computing SNN
+
+# check the names for graphs in the object.
+names(alldata@graphs) # "RNN_nn" "RNA_snn
+
+#pheatmap(alldata@graphs$RNA_nn[1:200, 1:200],col = c("white", "black"), border_color = "grey90",legend = F, cluster_rows = F, cluster_cols = F, fontsize = 2)
+
+```
+
+### Clustering with Leiden Algorithm
+
+```{r}
+# Clustering with leiden (algorithm 4)
+for (res in c(0.1, 0.25, 0.5, 1, 1.5, 2)) {
+    alldata <- FindClusters(alldata, graph.name = "RNA_snn", resolution = res, algorithm = 4, method = "igraph")
+}
+
+plot_grid(ncol = 3, DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.0.5") +
+    ggtitle("leiden_0.5"), DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.1") +
+    ggtitle("leiden_1"), DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.2") +
+    ggtitle("leiden_2"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

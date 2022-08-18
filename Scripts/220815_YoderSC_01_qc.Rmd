@@ -21,37 +21,38 @@ This script will perform quality control for the ift88 mutant samples from Dr. Y
 library(Seurat)
 ```
 
-
-### Load data
-
-```{r Load-Data}
-#KZ1cre-1
-ift88_wt_1 <- Read10X(data.dir = "/data/project/lasseigne_lab/DATASET_dir/Yoder_SC_IFT88_PC2/Raw-Data/KZ1cre-1/filtered_feature_bc_matrix/")
-
-#KZ4cre-2
-ift88_wt_2 <- Read10X(data.dir = "/data/project/lasseigne_lab/DATASET_dir/Yoder_SC_IFT88_PC2/Raw-Data/KZ4cre-2/filtered_feature_bc_matrix/")
-
-#KZ2Cre+1
-ift88_ko_1 <- Read10X(data.dir = "/data/project/lasseigne_lab/DATASET_dir/Yoder_SC_IFT88_PC2/Raw-Data/KZ2Cre+1/filtered_feature_bc_matrix/")
-
-#KZ3Cre+1
-ift88_ko_2 <- Read10X(data.dir = "/data/project/lasseigne_lab/DATASET_dir/Yoder_SC_IFT88_PC2/Raw-Data/KZ3Cre+2/filtered_feature_bc_matrix/")
-```
-
 ### Create Seurat objects
 Creating the Seurat objects from the loaded matixes
 
 ```{r Create-Seurat-Objects}
-wt_1_obj <- CreateSeuratObject(counts = ift88_wt_1, project = 'wt-1')
-wt_2_obj <- CreateSeuratObject(counts = ift88_wt_2, project = 'wt-2')
-ko_1_obj <- CreateSeuratObject(counts = ift88_ko_1, project = 'ko-1')
-ko_2_obj <- CreateSeuratObject(counts = ift88_ko_2, project = 'ko-2')
+# Function to read in data and create Seurat objects
+create_seurat_objects <- function(path){
+  
+  # Generate the raw input list that contains the sample names
+  input_list <- list.dirs(path = path, full.names = FALSE, recursive = FALSE)
 
-# add metadata
-wt_1_obj$type = "Wildtype"
-wt_2_obj$type = "Wildtype"
-ko_1_obj$type = "Mutant"
-ko_2_obj$type = "Mutant"
+  #For loop to read in the data from the CellRanger output and create a cooresponding Seurat object. 
+  for (sample in input_list) {
+    # Reads in the data. the sample variable here is to distinguish between the data directories from the STARsolo output
+    seurat_data <- Read10X(data.dir = paste0(path, sample, "/filtered_feature_bc_matrix/"))
+    
+    # Creates the Seurat object for the sample. Sets the project to the sample name.
+    seurat_obj <- CreateSeuratObject(counts = seurat_data,
+                                      min.features = 100,
+                                      project = sample)
+    
+    #assigns the seurat object to the sample name.
+    assign(sample, seurat_obj, envir = .GlobalEnv)
+  }
+}
+
+create_seurat_objects(path = "/data/user/tchowton/220804_YoderSC/Data/RawData/")
+
+# Add 'type' metadata
+ift88_wt_1j$type = "Wildtype"
+ift88_wt_2$type = "Wildtype"
+ift88_ko_1$type = "Mutant"
+ift88_ko_2$type = "Mutant"
 
 # Merge datasets into one single seurat object
 alldata <- merge(wt_1_obj, c(wt_2_obj, ko_1_obj, ko_2_obj), add.cell.ids = c("wt_1", "wt_2", "ko_1", "ko_2"))

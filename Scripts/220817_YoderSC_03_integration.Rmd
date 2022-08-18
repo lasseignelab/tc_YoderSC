@@ -28,7 +28,7 @@ library(harmony)
 ### Load data
 
 ```{r Load-Data}
-# Loading in the filtered seurat object from the qc script "/data/user/tchowton/220804_YoderSC/Scripts/220815_YoderSC_01_qc.Rmd"
+# Loading in the filtered seurat object from the dim reduction script "/data/user/tchowton/220804_YoderSC/Scripts/220816_YoderSC_02_dim-reduction.Rmd"
 alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_02-ift88-dr.rds")
 
 dim(alldata) #20405 20625
@@ -62,7 +62,7 @@ temp <- unique(unlist(hvgs_per_dataset))
 overlap <- sapply(hvgs_per_dataset, function(x) {
     temp %in% x
 })
-#pheatmap::pheatmap(t(overlap * 1), cluster_rows = F, color = c("grey90", "grey20"))
+pheatmap::pheatmap(t(overlap * 1), cluster_rows = F, color = c("grey90", "grey20"))
 ```
 
 ### Find-Int-Anchors
@@ -141,7 +141,7 @@ DimPlot(alldata.int,
 
 ### Save Data
 ```{r SaveData-SessionInfo}
-saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_03-ift88-integration.rds")
+saveRDS(alldata.int, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_03-ift88-integration.rds")
 
 sessionInfo()
 ```
