@@ -1,0 +1,100 @@
+---
+title: "220822_YoderSC_06_celltypes"
+author: "T.C. Howton"
+date: '2022-08-22'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Project Overview
+This project will use Liana and NichNet to explore cell-cell communication in PKD samples form Dr. Yoder's lab. This project will reproduce Kasi's work with updated NicheNet and adding Liana.
+
+## Script Purpose
+This script will perform quality control for the ift88 mutant samples from Dr. Yoder's lab. 
+
+### Load Packages
+
+```{r Load-Packages, echo=FALSE}
+suppressPackageStartupMessages({
+    library(Seurat)
+    library(dplyr)
+    library(cowplot)
+    library(ggplot2)
+    library(pheatmap)
+    library(enrichR)
+    library(rafalib)
+})
+```
+
+
+### Load data
+
+```{r Load-Data}
+# Loading in the filtered seurat object from the integration script "/data/user/tchowton/220804_YoderSC/Scripts/220817_YoderSC_03_integration.Rmd"
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_05-ift88-dge.rds")
+
+dim(alldata) #20405 20625
+print(names(alldata@reductions)) # "pca"          "umap"         "harmony"      "umap_harmony"
+```
+
+```{r}
+# https://www.science.org/doi/10.1126/science.aar2131
+cd_genes <- c('Nrp1', 'Kdr', 'Nphs1', 'Nphs2', 'Slc27a2', 'Lrp2', 'Slc12a1', 'Umod', 'Slc12a3', 'Pvalb', 'Aqp2', 'Hsd11b2', 'Atp6v1g3', 'Atp6v0d2', 'Insrr', 'Rhbg', 'Mki67', 'Cdca3', 'Plac8', 'S100a4', 'C1qa', 'C1qb', 'S100a8', 'S100a9', 'Cd79a', 'Cd79b', 'Ltb', 'Cxcr6', 'Gzma', 'Nkg7', 'Stmn1')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_celltype-markers.pdf')
+DotPlot(object = alldata, features = cd_genes)
+dev.off()
+
+# Cell counts by cluster
+#   1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19   20   21   22   23   24   25   26   27   28 
+#2916 2185 1727 1396 1344 1300 1188  977  923  922  876  692  597  425  377  338  335  308  307  299  290  262  234  132   91   68   60   56 
+```
+
+```{r}
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_celltype-markers-individual.pdf')
+for (i in 1:length(cd_genes)) {
+  print(VlnPlot(alldata, features = cd_genes[[i]], pt.size = 0))
+}
+dev.off()
+
+VlnPlot(alldata, features = "Itgam", pt.size = 0) #inf 6, 13, 20
+VlnPlot(alldata, features = "Ccr2", pt.size = 0)
+VlnPlot(alldata, features = "Adgre1", pt.size = 0) #re 1, 6, 21
+VlnPlot(alldata, features = "Fcgr1", pt.size = 0)
+FeaturePlot(alldata, features = c("Itgam"))
+FeaturePlot(alldata, features = c("Ccr2"))
+FeaturePlot(alldata, features = c("Adgre1"))
+FeaturePlot(alldata, features = c("Fcgr1")) #cd64
+
+
+
+plot.list <- list()
+for (i in 1:length(cd_genes)) {
+    plot.list[[i]] <- VlnPlot(object = alldata, features = cd_genes[[i]])
+}
+test <- '/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_celltype-markers-'
+for (i in 1:5) {
+  tmp_test <- paste0(test, as.character(i), ".pdf")
+  print(tmp_test)
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+### Save Data
+```{r SaveData-SessionInfo}
+saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_05-ift88-dge.rds")
+
+sessionInfo()
+```

@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=24, fig.height=8) 
 ```
 
 # Project Overview
@@ -24,6 +25,7 @@ library(ggplot2)
 library(pheatmap)
 library(rafalib)
 library(clustree)
+library(reticulate)
 ```
 
 
@@ -67,12 +69,28 @@ for (res in c(0.1, 0.25, 0.5, 1, 1.5, 2)) {
     alldata <- FindClusters(alldata, graph.name = "RNA_snn", resolution = res, algorithm = 4, method = "igraph")
 }
 
-plot_grid(ncol = 3, DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.0.5") +
-    ggtitle("leiden_0.5"), DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.1") +
-    ggtitle("leiden_1"), DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.2") +
-    ggtitle("leiden_2"))
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_clust-by-res.pdf')
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.0.5")
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.1")
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.2")
+dev.off()
 ```
 
+### Clustree
+We can now use the clustree package to visualize how cells are distributed between clusters depending on resolution.
+
+```{r Clustree}
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_clustree.pdf')
+clustree(alldata@meta.data, prefix = "RNA_snn_res.")
+dev.off()
+```
+
+### Save Data
+```{r SaveData-SessionInfo}
+saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_04-ift88-clustering.rds")
+
+sessionInfo()
+```
 
 
 

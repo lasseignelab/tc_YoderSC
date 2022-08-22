@@ -1,0 +1,134 @@
+---
+title: "220822_YoderSC_05_dge"
+author: "T.C. Howton"
+date: '2022-08-22'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Project Overview
+This project will use Liana and NichNet to explore cell-cell communication in PKD samples form Dr. Yoder's lab. This project will reproduce Kasi's work with updated NicheNet and adding Liana.
+
+## Script Purpose
+This script will perform quality control for the ift88 mutant samples from Dr. Yoder's lab. 
+
+### Load Packages
+
+```{r Load-Packages, echo=FALSE}
+suppressPackageStartupMessages({
+    library(Seurat)
+    library(dplyr)
+    library(cowplot)
+    library(ggplot2)
+    library(pheatmap)
+    library(enrichR)
+    library(rafalib)
+})
+```
+
+
+### Load data
+
+```{r Load-Data}
+# Loading in the filtered seurat object from the integration script "/data/user/tchowton/220804_YoderSC/Scripts/220817_YoderSC_03_integration.Rmd"
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_04-ift88-clustering.rds")
+
+dim(alldata) #20405 20625
+print(names(alldata@reductions)) # "pca"          "umap"         "harmony"      "umap_harmony"
+
+# Set the identity as louvain with resolution 0.5
+sel.clust = "RNA_snn_res.1"
+
+alldata <- SetIdent(alldata, value = sel.clust)
+table(alldata@active.ident)
+#   1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19   20   21   22   23   24   25   26   27   28 
+#2916 2185 1727 1396 1344 1300 1188  977  923  922  876  692  597  425  377  338  335  308  307  299  290  262  234  132   91   68   60   56 
+
+# plot this clustering
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_res-1.pdf')
+DimPlot(alldata, label = T) + NoAxes()
+DimPlot(alldata, group.by = "orig.ident") + NoAxes()
+DimPlot(alldata, split.by = "type") + NoAxes()
+DimPlot(alldata, group.by = "type") + NoAxes()
+dev.off()
+
+```
+
+## Cell marker genes
+
+Let us first compute a ranking for the highly differential genes in each cluster. There are many different tests and parameters to be chosen that can be used to refine your results. When looking for marker genes, we want genes that are positivelly expressed in a cell type and possibly not expressed in the others.
+
+### Compute differential expression
+
+```{r Compute-Diff-Exp}
+markers_genes <- FindAllMarkers(alldata, log2FC.threshold = 0.2, test.use = "wilcox",
+    min.pct = 0.1, min.diff.pct = 0.2, only.pos = TRUE, max.cells.per.ident = 50,
+    assay = "RNA")
+
+# We can now select the top 25 up regulated genes for plotting.
+markers_genes %>%
+    group_by(cluster) %>%
+    top_n(-25, p_val_adj) -> top25
+top25
+
+# We can now select the top 25 up regulated genes for plotting.
+
+mypar(2, 5, mar = c(4, 6, 3, 1))
+for (i in unique(top25$cluster)) {
+    barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == i], F),
+        horiz = T, las = 1, main = paste0(i, " vs. rest"), border = "white", yaxs = "i")
+    abline(v = c(0, 0.25), lty = c(1, 2))
+}
+
+# We can visualize them as a heatmap. Here we are selecting the top 5.
+
+markers_genes %>%
+    group_by(cluster) %>%
+    top_n(-5, p_val_adj) -> top5
+
+# create a scale.data slot for the selected genes
+alldata <- ScaleData(alldata, features = as.character(unique(top5$gene)), assay = "RNA")
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_dge-heatmap.pdf')
+DoHeatmap(alldata, features = as.character(unique(top5$gene)), group.by = sel.clust,
+    assay = "RNA")
+dev.off()
+```
+
+### Save Data
+```{r SaveData-SessionInfo}
+saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_05-ift88-dge.rds")
+
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
