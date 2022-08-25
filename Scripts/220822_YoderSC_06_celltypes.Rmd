@@ -7,6 +7,8 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=10, fig.height=20) 
+knitr::opts_chunk$set(fig.width=15, fig.height=10) 
 ```
 
 # Project Overview
@@ -33,17 +35,19 @@ suppressPackageStartupMessages({
 ### Load data
 
 ```{r Load-Data}
-# Loading in the filtered seurat object from the integration script "/data/user/tchowton/220804_YoderSC/Scripts/220817_YoderSC_03_integration.Rmd"
+# Loading in the filtered seurat object from the dge script "/data/user/tchowton/220804_YoderSC/Scripts/220822_YoderSC_05_dge.Rmd"
 alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_05-ift88-dge.rds")
 
 dim(alldata) #20405 20625
 print(names(alldata@reductions)) # "pca"          "umap"         "harmony"      "umap_harmony"
 ```
 
+### Initial Marker Annotation
+
 ```{r}
 # https://www.science.org/doi/10.1126/science.aar2131
 cd_genes <- c('Nrp1', 'Kdr', 'Nphs1', 'Nphs2', 'Slc27a2', 'Lrp2', 'Slc12a1', 'Umod', 'Slc12a3', 'Pvalb', 'Aqp2', 'Hsd11b2', 'Atp6v1g3', 'Atp6v0d2', 'Insrr', 'Rhbg', 'Mki67', 'Cdca3', 'Plac8', 'S100a4', 'C1qa', 'C1qb', 'S100a8', 'S100a9', 'Cd79a', 'Cd79b', 'Ltb', 'Cxcr6', 'Gzma', 'Nkg7', 'Stmn1')
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_celltype-markers.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220823_res-5-celltype-markers.pdf', width = 28, height = 18)
 DotPlot(object = alldata, features = cd_genes)
 dev.off()
 
@@ -52,49 +56,228 @@ dev.off()
 #2916 2185 1727 1396 1344 1300 1188  977  923  922  876  692  597  425  377  338  335  308  307  299  290  262  234  132   91   68   60   56 
 ```
 
-```{r}
+```{r Vlnplot-per-marker}
 pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_celltype-markers-individual.pdf')
 for (i in 1:length(cd_genes)) {
   print(VlnPlot(alldata, features = cd_genes[[i]], pt.size = 0))
 }
 dev.off()
+```
 
-VlnPlot(alldata, features = "Itgam", pt.size = 0) #inf 6, 13, 20
-VlnPlot(alldata, features = "Ccr2", pt.size = 0)
-VlnPlot(alldata, features = "Adgre1", pt.size = 0) #re 1, 6, 21
+
+### Panglaodb Check for Unknown Clusters
+Some clusters appeared to be a certain cell type from the initial check, but I want to look at the top few genes to double check. 
+
+```{r Individual-cluster-id}
+# Cluster 5 didn't have any markers pop up so using https://panglaodb.se/ to check the top genes
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 5], F),
+        horiz = T, las = 1, main = paste0(5, " vs. rest"), border = "white", yaxs = "i")
+# cluster 7
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 7], F),
+        horiz = T, las = 1, main = paste0(7, " vs. rest"), border = "white", yaxs = "i")
+# T cells
+
+# cluster 9
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 9], F),
+        horiz = T, las = 1, main = paste0(9, " vs. rest"), border = "white", yaxs = "i")
+# Macrophages?
+
+# cluster 10
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 10], F),
+        horiz = T, las = 1, main = paste0(10, " vs. rest"), border = "white", yaxs = "i")
+# Macrophages?
+
+# cluster 19
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 19], F),
+        horiz = T, las = 1, main = paste0(19, " vs. rest"), border = "white", yaxs = "i")
+# T cells
+
+# cluster 22
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 22], F),
+        horiz = T, las = 1, main = paste0(22, " vs. rest"), border = "white", yaxs = "i")
+# Macrophages or Fibroblasts
+
+# cluster 31
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 31], F),
+        horiz = T, las = 1, main = paste0(31, " vs. rest"), border = "white", yaxs = "i")
+# Macrophages
+
+# cluster 37
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 37], F),
+        horiz = T, las = 1, main = paste0(37, " vs. rest"), border = "white", yaxs = "i")
+# PTC
+
+# cluster 41
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 41], F),
+        horiz = T, las = 1, main = paste0(41, " vs. rest"), border = "white", yaxs = "i")
+# B cells (still weird its so far away)
+
+# cluster 48
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 48], F),
+        horiz = T, las = 1, main = paste0(48, " vs. rest"), border = "white", yaxs = "i")
+# Endothelial cells
+
+# cluster 49
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 49], F),
+        horiz = T, las = 1, main = paste0(49, " vs. rest"), border = "white", yaxs = "i")
+# macrophages (still check)
+
+# cluster 52
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 52], F),
+        horiz = T, las = 1, main = paste0(52, " vs. rest"), border = "white", yaxs = "i")
+# PTC
+
+# cluster 54
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 54], F),
+        horiz = T, las = 1, main = paste0(54, " vs. rest"), border = "white", yaxs = "i")
+# T cells
+
+# cluster 56
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 56], F),
+        horiz = T, las = 1, main = paste0(56, " vs. rest"), border = "white", yaxs = "i")
+# Endothelial cells
+
+# cluster 50
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 50], F),
+        horiz = T, las = 1, main = paste0(50, " vs. rest"), border = "white", yaxs = "i")
+# Fibroblasts (smc)
+
+# cluster 39
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 39], F),
+        horiz = T, las = 1, main = paste0(39, " vs. rest"), border = "white", yaxs = "i")
+# DTC?
+
+# cluster 43
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 43], F),
+        horiz = T, las = 1, main = paste0(43, " vs. rest"), border = "white", yaxs = "i")
+# macrophages (still check)
+
+# cluster 51
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 51], F),
+        horiz = T, las = 1, main = paste0(51, " vs. rest"), border = "white", yaxs = "i")
+# Fib (still cehck)
+
+# cluster 53
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 53], F),
+        horiz = T, las = 1, main = paste0(53, " vs. rest"), border = "white", yaxs = "i")
+# smooth muscle cells
+
+# cluster 57
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 57], F),
+        horiz = T, las = 1, main = paste0(57, " vs. rest"), border = "white", yaxs = "i")
+# unknown
+
+# cluster 58
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 58], F),
+        horiz = T, las = 1, main = paste0(58, " vs. rest"), border = "white", yaxs = "i")
+# unknown 2
+
+# cluster 62
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 62], F),
+        horiz = T, las = 1, main = paste0(62, " vs. rest"), border = "white", yaxs = "i")
+#  unknown 3
+
+# cluster 63
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 63], F),
+        horiz = T, las = 1, main = paste0(63, " vs. rest"), border = "white", yaxs = "i")
+# macrophages
+
+# cluster 64
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 64], F),
+        horiz = T, las = 1, main = paste0(64, " vs. rest"), border = "white", yaxs = "i")
+# macrophages
+
+# cluster 65
+barplot(sort(setNames(top25$avg_log2FC, top25$gene)[top25$cluster == 65], F),
+        horiz = T, las = 1, main = paste0(65, " vs. rest"), border = "white", yaxs = "i")
+# EC
+```
+
+### Cell Type Specific Checks
+
+```{r cell-type-specific-checks}
+DimPlot(alldata, label = T) + NoAxes()
+# Macrophages
+VlnPlot(alldata, features = "Gzma", pt.size = 0) 
+VlnPlot(alldata, features = "Nkg7", pt.size = 0)
+VlnPlot(alldata, features = "Adgre1", pt.size = 0) 
 VlnPlot(alldata, features = "Fcgr1", pt.size = 0)
 FeaturePlot(alldata, features = c("Itgam"))
 FeaturePlot(alldata, features = c("Ccr2"))
 FeaturePlot(alldata, features = c("Adgre1"))
 FeaturePlot(alldata, features = c("Fcgr1")) #cd64
 
+# Dendritic cells
+VlnPlot(alldata, features = "Snx22", pt.size = 0) #inf 6, 13, 20
+VlnPlot(alldata, features = "Cd209a", pt.size = 0)
+FeaturePlot(alldata, features = c("Snx22"))
+FeaturePlot(alldata, features = c("Batf3"))
 
+# podocytes
+VlnPlot(alldata_scaled, features = "Cd4", pt.size = 0) 
+VlnPlot(alldata, features = "Cd4", pt.size = 0)
+VlnPlot(alldata, features = "Cd3d", pt.size = 0)
+VlnPlot(alldata, features = "Cd3g", pt.size = 0) 
+VlnPlot(alldata, features = "Slc22a6", pt.size = 0)
+VlnPlot(alldata, features = "Slc22a8", pt.size = 0)
+VlnPlot(alldata, features = "Car4", pt.size = 0) 
+VlnPlot(alldata, features = "Agt", pt.size = 0)
+VlnPlot(alldata, features = "Lyz2", pt.size = 0)
+VlnPlot(alldata, features = "Slc27a2", pt.size = 0) 
+RidgePlot(alldata_subset, features = c("Nphs1", "Nphs2"))
+RidgePlot(alldata_scaled, features = "Nphs1")
+VlnPlot(alldata, features = "Cd14", pt.size = 0)
+FeaturePlot(alldata, features = c("Snx22"))
+FeaturePlot(alldata, features = c("Batf3"))
 
-plot.list <- list()
-for (i in 1:length(cd_genes)) {
-    plot.list[[i]] <- VlnPlot(object = alldata, features = cd_genes[[i]])
+Kasi_markers <- c('Nphs1', 'Nphs2', 'Adamts5', 'Plat', 'Ehd3', 'Mapt', 'Plvap', 'Pdgfrb', 'Slc34a1', 'Lrp2', 'Slc5a2', 'Slc5a12', 'Slc22a6', 'Slc22a8', 'Car4', 'Agt', 'Slc5a1', 'Slc27a2', 'Slc22a19', 'Slc22a7', 'Slc12a1', 'Clcnka', 'Umod', 'Slc12a3', 'Aqp2', 'Scnn1g', 'Hsd11b2', 'Foxi1', 'Slc4a1', 'Aqp6', 'Slc26a4', 'Hmx2', 'Ms4a1', 'Cd79a', 'Jchain', 'Mzb1', 'Cd209a', 'Gzma', 'S100a9', 'Cd68', 'Adgre1', 'Itgam', 'C1qa', 'C1qb', 'C1qc', 'Apoe', 'Ly6c1', 'Ly6c2', 'Plac8', 'Chil3', 'Ear2', 'Cebpb', 'Nr4a1', 'Cd3d', 'Cd3g', 'Cd4', 'Cd8a')
+
+DoHeatmap(alldata_scaled, features = Kasi_markers)
+
+tubule_markers <- c('Slc5a2', 'Slc22a6', 'Lrp2', 'Slc9a3', 'Pth1r', 'Slc34a1', 'Agt', 'Aqp1', 'Slc14a2', 'Clcnka', 'Slc12a1', 'Umod', 'Pvalb', 'Slc12a3', 'Calb1', 'Aqp2', 'Scnn1g', 'Slc4a1', 'Slc26a4', 'Atp6c1g3')
+
+DoHeatmap(alldata_scaled, features = tubule_markers)
+
+DotPlot(object = alldata_scaled, features = tubule_markers)
+DotPlot(object = alldata, features = tubule_markers)
+for (i in Kasi_markers) {
+  print(RidgePlot(alldata_subset, features = i))
 }
-test <- '/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_celltype-markers-'
-for (i in 1:5) {
-  tmp_test <- paste0(test, as.character(i), ".pdf")
-  print(tmp_test)
-}
+
+alldata_scaled <- ScaleData(alldata)
+
+DotPlot(object = alldata, features = Kasi_markers)
+
+DotPlot(object = alldata, features = c("Pdgfra", "Gata3"))
+
+macros <- c('Cd68', 'Adgre1', 'Itgam', 'C1qa', 'C1qb', 'C1qc', 'Apoe')
+DotPlot(object = alldata_subset, features = macros)
+
+alldata_subset <- subset(alldata, idents = c(57, 58))
+DimPlot(alldata_subset, label = T) + NoAxes()
+
+VlnPlot(alldata, features = "Pdgfrb", pt.size = 0)
+FeaturePlot(alldata, features = c("Adamts5"))
+
 ```
 
 
+### Merging and renaming clusters
 
-
-
-
-
-
-
-
+```{r Merge-Rename-Clusters}
+new_cluster_ids <- c('Cytotoxic_T_Cell', 'Helper_T_Cell', 'Endothelial_Cells', 'Resident_Macrophages', 'Endothelial_Cells', 'Resident_Macrophages', 'Helper_T_Cell', 'Endothelial_Cells', 'Infiltrating_Macrophages', 'Infiltrating_Macrophages', 'B_Lymphocytes', 'Resident_Macrophages', 'Natural Kill Cells', 'Endothelial_Cells', 'B_Lymphocytes', 'Endothelial_Cells', 'Endothelial_Cells', 'B_Lymphocytes', 'Helper_T_Cell', 'Endothelial_Cells', 'Resident_Macrophages', 'Infiltrating_Macrophages', 'Collecting_Duct_Principal_Cell', 'Proximal_Tubule_S2_Cells', 'Helper_T_Cell', 'Proximal_Tubule_S3_Cells', 'Distal_Convoluted_Tubule_Cells', 'Proximal_Tubule_S1_Cells', 'Resident_Macrophages', 'Loop_of_Henle', 'Infiltrating_Macrophages', 'Proximal_Tubule_S2_Cells', 'Helper_T_Cell', 'Endothelial_Cells', 'Resident_Macrophages', 'Resident_Macrophages', 'Proximal_Tubule_S2_Cells', 'Neutrophils', 'Collecting_Duct_Principal_Cell', 'Proximal_Tubule_S1_Cells', 'B_Lymphocytes', 'Resident_Macrophages', 'Dendritic_Cells', 'Cytotoxic_T_Cell', 'Proximal_Tubule_S1_Cells', 'Proximal_Tubule_S1_Cells', 'Collecting_Duct_Principal_Cell', 'Endothelial_Cells', 'Resident_Macrophages', 'Pericytes', 'Fibroblasts', 'Proximal_Tubule_S3_Cells', 'Smooth_Muscle_Cells', 'T_Lymphocytes', 'Helper_T_Cell', 'Resident_Macrophages', 'Unknown_1', 'Unknown_2', 'Collecting_Duct_Intercalated_Cell', 'Endothelial_Cells', 'Podocytes', 'Infiltrating_Macrophages', 'Resident_Macrophages', 'Resident_Macrophages', 'Endothelial_Cells')
+names(new_cluster_ids) <- levels(alldata)
+alldata <- RenameIdents(alldata, new_cluster_ids)
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220825_labeled.pdf', width = 10, height = 10)
+DimPlot(alldata, reduction = "umap_harmony", label = TRUE, pt.size = 0.5) + NoLegend()
+dev.off
+#alldata_distal <- subset(alldata, idents = "Distal_Tuble_Cells")
+```
 
 
 ### Save Data
 ```{r SaveData-SessionInfo}
-saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_05-ift88-dge.rds")
+saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220825_YoderSC_06-ift88-final.rds")
 
 sessionInfo()
 ```

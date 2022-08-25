@@ -39,8 +39,9 @@ alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822
 dim(alldata) #20405 20625
 print(names(alldata@reductions)) # "pca"          "umap"         "harmony"      "umap_harmony"
 
-# Set the identity as louvain with resolution 0.5
-sel.clust = "RNA_snn_res.1"
+# Set the identity as leiden with resolution 5
+alldata@meta.data %>% head()
+sel.clust = "RNA_snn_res.5"
 
 alldata <- SetIdent(alldata, value = sel.clust)
 table(alldata@active.ident)
@@ -49,7 +50,7 @@ table(alldata@active.ident)
 
 # plot this clustering
 pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_res-1.pdf')
-DimPlot(alldata, label = T) + NoAxes()
+DimPlot(alldata, label = T) + NoLegend()
 DimPlot(alldata, group.by = "orig.ident") + NoAxes()
 DimPlot(alldata, split.by = "type") + NoAxes()
 DimPlot(alldata, group.by = "type") + NoAxes()

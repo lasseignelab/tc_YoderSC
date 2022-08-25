@@ -19,6 +19,7 @@ This script will perform quality control for the ift88 mutant samples from Dr. Y
 ### Load Packages
 
 ```{r Load-Packages, echo=FALSE}
+suppressPackageStartupMessages({
 library(Seurat)
 library(cowplot)
 library(ggplot2)
@@ -26,6 +27,7 @@ library(pheatmap)
 library(rafalib)
 library(clustree)
 library(reticulate)
+})
 ```
 
 
@@ -65,7 +67,7 @@ names(alldata@graphs) # "RNN_nn" "RNA_snn
 
 ```{r}
 # Clustering with leiden (algorithm 4)
-for (res in c(0.1, 0.25, 0.5, 1, 1.5, 2)) {
+for (res in c(0.1, 0.25, 0.5, 1, 1.5, 2, 5)) {
     alldata <- FindClusters(alldata, graph.name = "RNA_snn", resolution = res, algorithm = 4, method = "igraph")
 }
 
@@ -74,13 +76,20 @@ DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.0.5")
 DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.1")
 DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.2")
 dev.off()
+
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220823_clust-by-res.pdf')
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.0.5")
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.1")
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.2")
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.5")
+dev.off()
 ```
 
 ### Clustree
 We can now use the clustree package to visualize how cells are distributed between clusters depending on resolution.
 
 ```{r Clustree}
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_clustree.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220823_clustree.pdf')
 clustree(alldata@meta.data, prefix = "RNA_snn_res.")
 dev.off()
 ```
