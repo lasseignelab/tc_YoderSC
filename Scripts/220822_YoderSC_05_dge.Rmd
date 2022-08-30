@@ -33,23 +33,22 @@ suppressPackageStartupMessages({
 ### Load data
 
 ```{r Load-Data}
-# Loading in the filtered seurat object from the integration script "/data/user/tchowton/220804_YoderSC/Scripts/220817_YoderSC_03_integration.Rmd"
-alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_04-ift88-clustering.rds")
+# Loading in the filtered seurat object from the clustering script
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220829_YoderSC_04-pc2-clustering.rds")
 
-dim(alldata) #20405 20625
+dim(alldata) #20405 20625 pc2 - 19893 10688
 print(names(alldata@reductions)) # "pca"          "umap"         "harmony"      "umap_harmony"
 
 # Set the identity as leiden with resolution 5
 alldata@meta.data %>% head()
-sel.clust = "RNA_snn_res.5"
+sel.clust = "RNA_snn_res.1.5"
 
 alldata <- SetIdent(alldata, value = sel.clust)
 table(alldata@active.ident)
-#   1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19   20   21   22   23   24   25   26   27   28 
-#2916 2185 1727 1396 1344 1300 1188  977  923  922  876  692  597  425  377  338  335  308  307  299  290  262  234  132   91   68   60   56 
+
 
 # plot this clustering
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_res-1.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-clustering/220829_res-1_5.pdf')
 DimPlot(alldata, label = T) + NoLegend()
 DimPlot(alldata, group.by = "orig.ident") + NoAxes()
 DimPlot(alldata, split.by = "type") + NoAxes()
@@ -92,7 +91,7 @@ markers_genes %>%
 
 # create a scale.data slot for the selected genes
 alldata <- ScaleData(alldata, features = as.character(unique(top5$gene)), assay = "RNA")
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_dge-heatmap.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-clustering/220829_dge-heatmap.pdf')
 DoHeatmap(alldata, features = as.character(unique(top5$gene)), group.by = sel.clust,
     assay = "RNA")
 dev.off()
@@ -100,7 +99,7 @@ dev.off()
 
 ### Save Data
 ```{r SaveData-SessionInfo}
-saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_05-ift88-dge.rds")
+saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220829_YoderSC_05-pc2-dge.rds")
 
 sessionInfo()
 ```

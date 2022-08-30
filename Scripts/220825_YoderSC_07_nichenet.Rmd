@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(fig.width=15, fig.height=10) #nichenet-1
+knitr::opts_chunk$set(fig.width=20, fig.height=20) #nichenet-1
 ```
 
 # Project Overview
@@ -38,7 +38,7 @@ suppressPackageStartupMessages({
 
 ```{r Load-Data}
 # Loading in the final seurat object from the celltypes script "/data/user/tchowton/220804_YoderSC/Scripts/220822_YoderSC_06_celltypes.Rmd"
-alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220825_YoderSC_06-ift88-final.rds")
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220830_YoderSC_06-pc2-final.rds")
 
 dim(alldata) #20405 20625
 
@@ -132,7 +132,7 @@ ligand_activities
 best_upstream_ligands = ligand_activities %>% top_n(40, pearson) %>% arrange(-pearson) %>% pull(test_ligand) %>% unique()
 
 #These ligands are expressed by one or more of the input sender cells. To see which cell population expresses which of these top-ranked ligands, you can run the following:
-pdf("/data/user/tchowton/220804_YoderSC/Figures/ift88-nichenet/220826_best-upstream-ligands.pdf", width = 15, height = 10)
+pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220830_best-upstream-ligands.pdf", width = 15, height = 10)
 DotPlot(alldata, features = best_upstream_ligands %>% rev(), cols = "RdYlBu") + RotatedAxis()
 dev.off()
 ```
@@ -154,7 +154,7 @@ vis_ligand_target = active_ligand_target_links[order_targets,order_ligands] %>% 
 
 p_ligand_target_network <- vis_ligand_target %>% make_heatmap_ggplot("Prioritized ligands","Predicted target genes", color = "purple",legend_position = "top", x_axis_position = "top",legend_title = "Regulatory potential")  + theme(axis.text.x = element_text(face = "italic")) + scale_fill_gradient2(low = "whitesmoke",  high = "purple", breaks = c(0,0.0045,0.0090))
 
-pdf("/data/user/tchowton/220804_YoderSC/Figures/ift88-nichenet/220826_ligand-target-heatmap.pdf", width = 15, height = 10)
+pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220830_ligand-target-heatmap.pdf", width = 15, height = 10)
 p_ligand_target_network
 dev.off()
 ```
@@ -187,7 +187,7 @@ colnames(vis_ligand_receptor_network) = order_ligands_receptor %>% make.names()
 
 p_ligand_receptor_network = vis_ligand_receptor_network %>% t() %>% make_heatmap_ggplot("Ligands","Receptors", color = "mediumvioletred", x_axis_position = "top",legend_title = "Prior interaction potential")
 
-pdf("/data/user/tchowton/220804_YoderSC/Figures/ift88-nichenet/220826_ligand-receptor.pdf", width = 15, height = 10)
+pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220830_ligand-receptor.pdf", width = 15, height = 10)
 p_ligand_receptor_network
 dev.off()
 ```
@@ -222,9 +222,87 @@ colnames(vis_ligand_receptor_network_strict) = order_ligands_receptor %>% make.n
 
 p_ligand_receptor_network_strict = vis_ligand_receptor_network_strict %>% t() %>% make_heatmap_ggplot("Ligands","Receptors", color = "mediumvioletred", x_axis_position = "top",legend_title = "Prior interaction potential\n(bona fide)")
 
-pdf("/data/user/tchowton/220804_YoderSC/Figures/ift88-nichenet/220826_ligand-receptor-strict.pdf", width = 5, height = 5)
+pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220830_ligand-receptor-strict.pdf", width = 5, height = 5)
 p_ligand_receptor_network_strict
 dev.off()
 ```
+
+### Add log fold change information of ligands from sender cells
+
+In some cases, it might be possible to also check upregulation of ligands in sender cells. This can add a useful extra layer of information next to the ligand activities defined by NicheNet, because you can assume that some of the ligands inducing DE in receiver cells, will be DE themselves in the sender cells.
+
+```{r}
+
+# DE analysis for each sender cell type
+# this uses a new nichenetr function 
+DE_table_all <- Idents(alldata) %>% levels() %>% intersect(sender_celltypes) %>% lapply(get_lfc_celltype, seurat_obj = alldata, condition_colname = "type", condition_oi = condition_oi, condition_reference = condition_reference, expression_pct = 0.10, celltype_col = NULL) %>% reduce(full_join) # use this if cell type labels are the identities of your Seurat object -- if not: indicate the celltype_col properly
+DE_table_all[is.na(DE_table_all)] = 0
+
+# Combine ligand activities with DE information
+ligand_activities_de = ligand_activities %>% select(test_ligand, pearson) %>% rename(ligand = test_ligand) %>% left_join(DE_table_all %>% rename(ligand = gene))
+ligand_activities_de[is.na(ligand_activities_de)] = 0
+
+# make LFC heatmap
+lfc_matrix = ligand_activities_de  %>% select(-ligand, -pearson) %>% as.matrix() %>% magrittr::set_rownames(ligand_activities_de$ligand)
+rownames(lfc_matrix) = rownames(lfc_matrix) %>% make.names()
+
+order_ligands = order_ligands[order_ligands %in% rownames(lfc_matrix)]
+vis_ligand_lfc = lfc_matrix[order_ligands,]
+
+colnames(vis_ligand_lfc) = vis_ligand_lfc %>% colnames() %>% make.names()
+
+p_ligand_lfc <- vis_ligand_lfc %>% make_threecolor_heatmap_ggplot("Prioritized ligands","LFC in Sender", low_color = "midnightblue",mid_color = "white", mid = median(vis_ligand_lfc), high_color = "red",legend_position = "top", x_axis_position = "top", legend_title = "LFC") + theme(axis.text.y = element_text(face = "italic"))
+
+pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220830_LFC-in-sender.pdf", width = 5, height = 10)
+p_ligand_lfc
+dev.off()
+```
+
+### Summary visualizations of the NicheNet analysis
+
+For example, you can make a combined heatmap of ligand activities, ligand expression, ligand log fold change and the target genes of the top-ranked ligands. The plots for the log fold change and target genes were already made. Lets now make the heatmap for ligand activities and for expression.
+
+```{r}
+# ligand activity heatmap
+ligand_pearson_matrix <- ligand_activities %>% select(pearson) %>% as.matrix() %>% magrittr::set_rownames(ligand_activities$test_ligand)
+
+rownames(ligand_pearson_matrix) <- rownames(ligand_pearson_matrix) %>% make.names()
+colnames(ligand_pearson_matrix) <- colnames(ligand_pearson_matrix) %>% make.names()
+
+vis_ligand_pearson <- ligand_pearson_matrix[order_ligands, ] %>% as.matrix(ncol = 1) %>% magrittr::set_colnames("Pearson")
+p_ligand_pearson <- vis_ligand_pearson %>% make_heatmap_ggplot("Prioritized ligands","Ligand activity", color = "darkorange",legend_position = "top", x_axis_position = "top", legend_title = "Pearson correlation coefficient\ntarget gene prediction ability)") + theme(legend.text = element_text(size = 9))
+
+# ligand expression Seurat dotplot
+order_ligands_adapted <- order_ligands
+order_ligands_adapted[order_ligands_adapted == "H2.M3"] = "H2-M3" # cf required use of make.names for heatmap visualization | this is not necessary if these ligands are not in the list of prioritized ligands!
+order_ligands_adapted[order_ligands_adapted == "H2.T23"] = "H2-T23" # cf required use of make.names for heatmap visualization | this is not necessary if these ligands are not in the list of prioritized ligands!
+rotated_dotplot = DotPlot(alldata %>% subset(celltype %in% sender_celltypes), features = order_ligands_adapted, cols = "RdYlBu") + coord_flip() + theme(legend.text = element_text(size = 10), legend.title = element_text(size = 12)) # flip of coordinates necessary because we want to show ligands in the rows when combining all plots
+
+figures_without_legend <- cowplot::plot_grid(
+  p_ligand_pearson + theme(legend.position = "none", axis.ticks = element_blank()) + theme(axis.title.x = element_text()),
+  rotated_dotplot + theme(legend.position = "none", axis.ticks = element_blank(), axis.title.x = element_text(size = 12), axis.text.y = element_text(face = "italic", size = 9), axis.text.x = element_text(size = 9,  angle = 90,hjust = 0)) + ylab("Expression in Sender") + xlab("") + scale_y_discrete(position = "right"),
+  p_ligand_lfc + theme(legend.position = "none", axis.ticks = element_blank()) + theme(axis.title.x = element_text()) + ylab(""),
+  p_ligand_target_network + theme(legend.position = "none", axis.ticks = element_blank()) + ylab(""),
+  align = "hv",
+  nrow = 1,
+  rel_widths = c(ncol(vis_ligand_pearson)+6, ncol(vis_ligand_lfc) + 7, ncol(vis_ligand_lfc) + 8, ncol(vis_ligand_target)))
+
+legends = cowplot::plot_grid(
+    ggpubr::as_ggplot(ggpubr::get_legend(p_ligand_pearson)),
+    ggpubr::as_ggplot(ggpubr::get_legend(rotated_dotplot)),
+    ggpubr::as_ggplot(ggpubr::get_legend(p_ligand_lfc)),
+    ggpubr::as_ggplot(ggpubr::get_legend(p_ligand_target_network)),
+    nrow = 1,
+    align = "h", rel_widths = c(1.5, 1, 1, 1))
+
+combined_plot = cowplot::plot_grid(figures_without_legend, legends, rel_heights = c(10,5), nrow = 2, align = "hv")
+combined_plot
+```
+
+
+
+
+
+
 
 

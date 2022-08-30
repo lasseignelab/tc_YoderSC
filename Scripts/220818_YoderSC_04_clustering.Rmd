@@ -35,10 +35,15 @@ library(reticulate)
 
 ```{r Load-Data}
 # Loading in the filtered seurat object from the integration script "/data/user/tchowton/220804_YoderSC/Scripts/220817_YoderSC_03_integration.Rmd"
-alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_03-ift88-integration.rds")
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220829_YoderSC_03-pc2-integration.rds")
 
 dim(alldata) #20405 20625
 print(names(alldata@reductions)) # "pca"  "umap"
+
+# pc2
+# [1] 19893 10688
+# [1] "pca"          "umap"         "harmony"      "umap_harmony"
+
 ```
 
 ### Building kNN / SNN graph
@@ -51,10 +56,6 @@ alldata@active.assay <- "RNA"
 alldata@active.assay
 
 alldata <- FindNeighbors(alldata, dims = 1:30, reduction = "harmony")
-
-## Computing nearest neighbor graph
-
-## Computing SNN
 
 # check the names for graphs in the object.
 names(alldata@graphs) # "RNN_nn" "RNA_snn
@@ -71,10 +72,14 @@ for (res in c(0.1, 0.25, 0.5, 1, 1.5, 2, 5)) {
     alldata <- FindClusters(alldata, graph.name = "RNA_snn", resolution = res, algorithm = 4, method = "igraph")
 }
 
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220822_clust-by-res.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-clustering/220829_clust-by-res.pdf')
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.0.1")
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.0.25")
 DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.0.5")
 DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.1")
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.1.5")
 DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.2")
+DimPlot(alldata, reduction = "umap", group.by = "RNA_snn_res.5")
 dev.off()
 
 pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220823_clust-by-res.pdf')
@@ -89,14 +94,14 @@ dev.off()
 We can now use the clustree package to visualize how cells are distributed between clusters depending on resolution.
 
 ```{r Clustree}
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-clustering/220823_clustree.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-clustering/220829_clustree.pdf')
 clustree(alldata@meta.data, prefix = "RNA_snn_res.")
 dev.off()
 ```
 
 ### Save Data
 ```{r SaveData-SessionInfo}
-saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220822_YoderSC_04-ift88-clustering.rds")
+saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220829_YoderSC_04-pc2-clustering.rds")
 
 sessionInfo()
 ```

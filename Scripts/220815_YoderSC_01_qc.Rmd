@@ -34,7 +34,7 @@ create_seurat_objects <- function(path){
   #For loop to read in the data from the CellRanger output and create a cooresponding Seurat object. 
   for (sample in input_list) {
     # Reads in the data. the sample variable here is to distinguish between the data directories from the STARsolo output
-    seurat_data <- Read10X(data.dir = paste0(path, sample, "/filtered_feature_bc_matrix/"))
+    seurat_data <- Read10X(data.dir = paste0(path, sample, "/outs/filtered_feature_bc_matrix/"))
     
     # Creates the Seurat object for the sample. Sets the project to the sample name.
     seurat_obj <- CreateSeuratObject(counts = seurat_data,
@@ -47,18 +47,33 @@ create_seurat_objects <- function(path){
 }
 
 create_seurat_objects(path = "/data/user/tchowton/220804_YoderSC/Data/RawData/")
+create_seurat_objects(path = "/data/user/tchowton/PkdMtOxphos/Data/cellRangerOutput/220624_cellRangerOutputsPC2/")
 
-# Add 'type' metadata
-ift88_wt_1j$type = "Wildtype"
+
+# Add 'type' metadata ift88
+ift88_wt_1$type = "Wildtype"
 ift88_wt_2$type = "Wildtype"
 ift88_ko_1$type = "Mutant"
 ift88_ko_2$type = "Mutant"
 
-# Merge datasets into one single seurat object
-alldata <- merge(wt_1_obj, c(wt_2_obj, ko_1_obj, ko_2_obj), add.cell.ids = c("wt_1", "wt_2", "ko_1", "ko_2"))
+# Add 'type' metadata ift88
+pc2_wt_1$type = "Wildtype"
+pc2_wt_2$type = "Wildtype"
+pc2_ko_1$type = "Mutant"
+pc2_ko_2$type = "Mutant"
+
+# Merge datasets into one single seurat object ift88
+alldata <- merge(ift88_wt_1,
+                 c(ift88_wt_2, ift88_ko_1, ift88_ko_2),
+                 add.cell.ids = c("ift88_wt_1", "ift88_wt_2", "ift88_ko_1", "ift88_ko_2"))
+
+# Merge datasets into one single seurat object pc2
+alldata <- merge(pc2_wt_1,
+                 c(pc2_wt_2, pc2_ko_1, pc2_ko_2),
+                 add.cell.ids = c("pc2_wt_1", "pc2_wt_2", "pc2_ko_1", "pc2_ko_2"))
 
 # remove all objects that will not be used.
-rm(ift88_wt_1, ift88_wt_2, ift88_ko_1, ift88_ko_2, wt_1_obj, wt_2_obj, ko_1_obj, ko_2_obj)
+rm(ift88_wt_1, ift88_wt_2, ift88_ko_1, ift88_ko_2, pc2_wt_1, pc2_wt_2, pc2_ko_1, pc2_ko_2)
 
 # run garbage collect to free up memory
 gc()
@@ -83,7 +98,7 @@ alldata <- PercentageFeatureSet(alldata, "^Rp[sl]", col.name = "percent_ribo")
 feats <- c("nFeature_RNA", "nCount_RNA", "percent_mito", "percent_ribo")
 
 # Plot and save the initial QC figure
-pdf('/data/user/tchowton/220804_YoderSC/Figures/220815_qc-initial.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-preprocessing/220829_qc-initial.pdf')
 VlnPlot(alldata, group.by = "orig.ident", features = feats, pt.size = 0, ncol = 4) +
     NoLegend()
 FeatureScatter(alldata, "nCount_RNA", "nFeature_RNA", group.by = "orig.ident", pt.size = 0.5)
@@ -100,6 +115,10 @@ selected_f <- rownames(alldata)[Matrix::rowSums(alldata) > 3]
 data.filt <- subset(alldata, features = selected_f, cells = selected_c)
 dim(data.filt) # 20522 35354
 dim(alldata) # 31053 37576
+
+# pc2
+# [1] 20005 18799
+# [1] 32285 19907
 ```
 
 ```{r Plotting-total-top-genes}
@@ -107,7 +126,7 @@ par(mar = c(4, 8, 2, 1))
 C <- data.filt@assays$RNA@counts
 C <- Matrix::t(Matrix::t(C)/Matrix::colSums(C)) * 100
 most_expressed <- order(apply(C, 1, median), decreasing = T)[20:1]
-pdf('/data/user/tchowton/220804_YoderSC/Figures/220815_total-top-genes-filtered.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-preprocessing/220829_total-top-genes-filtered.pdf')
 boxplot(as.matrix(Matrix::t(C[most_expressed, ])), cex = 0.1, las = 1, xlab = "% total count per cell",
     col = (scales::hue_pal())(20)[20:1], horizontal = TRUE)
 dev.off()
@@ -124,6 +143,12 @@ data.filt <- subset(data.filt, cells = selected_ribo)
 dim(data.filt)
 
 table(data.filt$orig.ident)
+
+# pc2
+# [1] 20005 10688
+# 
+# pc2_ko_1 pc2_ko_2 pc2_wt_1 pc2_wt_2 
+#     2789     2817     2438     2644 
 ```
 
 ### Filtering technical genes
@@ -172,7 +197,7 @@ VlnPlot(data.filt,
 feats <- c("nFeature_RNA", "nCount_RNA", "percent_mito", "percent_ribo")
 
 # Plot and save the initial QC figure
-pdf('/data/user/tchowton/220804_YoderSC/Figures/220816_qc-filtered.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-preprocessing/220829_qc-filtered.pdf')
 VlnPlot(data.filt, 
         group.by = "orig.ident", 
         features = feats, 
@@ -190,7 +215,7 @@ dev.off()
 
 ### Save Data
 ```{r SaveData-SessionInfo}
-saveRDS(data.filt, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220816_YoderSC_01-ift88-qc.rds")
+saveRDS(data.filt, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220829_YoderSC_01-PC2-qc.rds")
 
 sessionInfo()
 ```

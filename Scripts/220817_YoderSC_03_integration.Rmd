@@ -18,10 +18,13 @@ This script will perform quality control for the ift88 mutant samples from Dr. Y
 ### Load Packages
 
 ```{r Load-Packages, echo=FALSE}
-library(Seurat)
-library(cowplot)
-library(ggplot2)
-library(harmony)
+suppressPackageStartupMessages({
+  library(Seurat)
+  library(cowplot)
+  library(ggplot2)
+  library(harmony)
+})
+
 ```
 
 
@@ -29,10 +32,14 @@ library(harmony)
 
 ```{r Load-Data}
 # Loading in the filtered seurat object from the dim reduction script "/data/user/tchowton/220804_YoderSC/Scripts/220816_YoderSC_02_dim-reduction.Rmd"
-alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_02-ift88-dr.rds")
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220829_YoderSC_02-pc2-dr.rds")
 
 dim(alldata) #20405 20625
 print(names(alldata@reductions)) # "pca"  "umap"
+
+# pc2
+# [1] 19893 10688
+# [1] "pca"  "umap"
 ```
 
 ### Split Seurat object into each sample and append to a list
@@ -126,7 +133,7 @@ p3 <- DimPlot(alldata.int, reduction = "umap_harmony", group.by = "orig.ident") 
     ggtitle("UMAP Harmony")
 leg <- get_legend(p1)
 
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-preprocessing/220817_int-cca-harmony-umap.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-preprocessing/220829_int-cca-harmony-umap.pdf')
 gridExtra::grid.arrange(gridExtra::arrangeGrob(p1 + NoLegend() + NoAxes(), p2 + NoLegend() +
     NoAxes(), p3 + NoLegend() + NoAxes(), nrow = 2),
     leg, ncol = 2, widths = c(8, 2))
@@ -141,7 +148,7 @@ DimPlot(alldata.int,
 
 ### Save Data
 ```{r SaveData-SessionInfo}
-saveRDS(alldata.int, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_03-ift88-integration.rds")
+saveRDS(alldata.int, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220829_YoderSC_03-pc2-integration.rds")
 
 sessionInfo()
 ```

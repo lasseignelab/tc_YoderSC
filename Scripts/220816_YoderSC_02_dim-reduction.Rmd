@@ -18,20 +18,26 @@ This script will perform quality control for the ift88 mutant samples from Dr. Y
 ### Load Packages
 
 ```{r Load-Packages, echo=FALSE}
-library(Seurat)
-library(cowplot)
-library(ggplot2)
-library(scran)
+suppressPackageStartupMessages({
+  library(Seurat)
+  library(cowplot)
+  library(ggplot2)
+  library(scran)
+})
+
 ```
 
 
 ### Load data
 
 ```{r Load-Data}
-# Loading in the filtered seurat object from the qc script "/data/user/tchowton/220804_YoderSC/Scripts/220815_YoderSC_01_qc.Rmd"
-alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220816_YoderSC_01-ift88-qc.rds")
+# Loading in the filtered seurat object from the qc script 
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220829_YoderSC_01-PC2-qc.rds")
 
 dim(alldata) #20405 20625
+
+# pc2
+# [1] 19893 10688
 ```
 
 ### Feature Selection
@@ -46,7 +52,7 @@ alldata <- FindVariableFeatures(alldata,
 
 top20 <- head(VariableFeatures(alldata), 20)
 
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-preprocessing/220816_dr-feature-selection.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-preprocessing/220829_dr-feature-selection.pdf')
 LabelPoints(plot = VariableFeaturePlot(alldata), points = top20, repel = TRUE)
 dev.off()
 ```
@@ -69,7 +75,7 @@ alldata <- RunPCA(alldata, npcs = 50, verbose = F)
 
 # We then plot the first principal components.
 
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-preprocessing/220816_dr-pca.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-preprocessing/220829_dr-pca.pdf')
 plot_grid(ncol = 3,
           DimPlot(alldata, 
                   reduction = "pca",
@@ -102,7 +108,7 @@ alldata <- RunUMAP(alldata,
                    learning.rate = 1,
                    spread = 1)
 
-pdf('/data/user/tchowton/220804_YoderSC/Figures/ift88-preprocessing/220817_dr-umap.pdf')
+pdf('/data/user/tchowton/220804_YoderSC/Figures/pc2-preprocessing/220829_dr-umap.pdf')
 DimPlot(alldata,
         reduction = "umap",
         group.by = "orig.ident") +
@@ -112,7 +118,7 @@ dev.off()
 
 ### Save Data
 ```{r SaveData-SessionInfo}
-saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220817_YoderSC_02-ift88-dr.rds")
+saveRDS(alldata, "/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220829_YoderSC_02-pc2-dr.rds")
 
 sessionInfo()
 ```
