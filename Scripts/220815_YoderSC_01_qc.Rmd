@@ -15,17 +15,21 @@ This project will use Liana and NichNet to explore cell-cell communication in PK
 ## Script Purpose
 This script will perform quality control for the ift88 mutant samples from Dr. Yoder's lab. 
 
+## Analysis
+
 ### Load Packages
 
 ```{r Load-Packages, echo=FALSE}
-library(Seurat)
+suppressPackageStartupMessages({
+  library(Seurat)
+})
 ```
 
 ### Create Seurat objects
-Creating the Seurat objects from the loaded matixes
+Creating the Seurat objects from the loaded matixes.
 
 ```{r Create-Seurat-Objects}
-# Function to read in data and create Seurat objects
+# Function to read in data and create Seurat objects. Provide the path to the directory containing the cellranger output directories for each sample.
 create_seurat_objects <- function(path){
   
   # Generate the raw input list that contains the sample names
