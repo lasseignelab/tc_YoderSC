@@ -1,0 +1,43 @@
+---
+title: "220908_YoderSC_08_liana"
+author: "T.C. Howton"
+date: '2022-09-08'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Project Overview
+This project will use Liana and NichNet to explore cell-cell communication in PKD samples form Dr. Yoder's lab. This project will reproduce Kasi's work with updated NicheNet and adding Liana.
+
+## Script Purpose
+LIANA's OmniPath resource was largely compiled from CCC databases with a human focus, as such LIANA works with human gene symbols by default. Nevertheless, one could run LIANA with any other organism, provided a dictionary is available to map human genesymbols to those of species X. This could be achieved using the HomoloGene database via OmnipathR with LIANA's generate_homologs function.
+
+
+### Load Packages
+
+```{r Load-packages}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(liana)
+  library(nichenetr)
+  library(Seurat)
+  library(ggrepel)
+  library(cowplot)
+  library(OmnipathR)
+  library(magrittr)
+})
+```
+
+
+```{r }
+liana_path <- system.file(package = "liana")
+testdata <-
+    readRDS(file.path(liana_path, "testdata", "input", "testdata.rds"))
+
+# Check the organisms which are currently available in omnipathR.
+show_homologene()
+```
+

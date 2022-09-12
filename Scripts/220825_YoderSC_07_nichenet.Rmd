@@ -108,8 +108,6 @@ seurat_obj_receiver <- subset(alldata, idents = receiver)
 # Because I only have the receiver cell type in this object, I can set the Ident to  "type"
 seurat_obj_receiver <- SetIdent(seurat_obj_receiver, value = seurat_obj_receiver[["type"]])
 
-condition_oi <- "Mutant"
-condition_reference <- "Wildtype" 
 
 # DGE to see which genes are differentially expressed in the mutant res macros vs ctl. These will end up being the putative downstream targets of the receptors
 DE_table_receiver <- FindMarkers(object = seurat_obj_receiver, ident.1 = condition_oi, ident.2 = condition_reference, min.pct = 0.10) %>% rownames_to_column("gene")
@@ -168,7 +166,11 @@ order_targets <- active_ligand_target_links_df$target %>% unique() %>% intersect
 rownames(active_ligand_target_links) <- rownames(active_ligand_target_links) %>% make.names() # make.names() for heatmap visualization of genes like H2-T23
 colnames(active_ligand_target_links) <- colnames(active_ligand_target_links) %>% make.names() # make.names() for heatmap visualization of genes like H2-T23
 
-vis_ligand_target = active_ligand_target_links[order_targets,order_ligands] %>% t()
+vis_ligand_target <- active_ligand_target_links[order_targets,order_ligands] %>% t()
+
+View(vis_ligand_target)
+class(vis_ligand_target)
+
 
 p_ligand_target_network <- vis_ligand_target %>% make_heatmap_ggplot("Prioritized ligands","Predicted target genes", color = "purple",legend_position = "top", x_axis_position = "top",legend_title = "Regulatory potential")  + theme(axis.text.x = element_text(face = "italic")) + scale_fill_gradient2(low = "whitesmoke",  high = "purple", breaks = c(0,0.0045,0.0090))
 
@@ -338,7 +340,27 @@ combined_plot
 ```
 
 
+### Exploring Gas6-Axl
 
+```{r}
+### Expression levels in PTCs for Gas6
+
+alldataPTCS1 <- subset(alldata, idents = "Proximal_Tubule_S1_Cells")
+alldataPTCS2 <- subset(alldata, idents = "Proximal_Tubule_S2_Cells")
+alldataPTCS3 <- subset(alldata, idents = "Proximal_Tubule_S3_Cells")
+Idents(alldataPTCS3)
+
+alldataPTCS1 <- SetIdent(alldataPTCS1, value = "type")
+alldataPTCS2 <- SetIdent(alldataPTCS2, value = "type")
+alldataPTCS3 <- SetIdent(alldataPTCS3, value = "type")
+
+
+VlnPlot(alldataPTCS1, features = "Gas6", pt.size = 0.2)
+VlnPlot(alldataPTCS2, features = "Gas6", pt.size = 0.2)
+VlnPlot(alldataPTCS3, features = "Gas6", pt.size = 0.2)
+
+
+```
 
 
 
