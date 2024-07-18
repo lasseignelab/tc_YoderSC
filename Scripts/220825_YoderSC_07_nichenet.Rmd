@@ -36,6 +36,7 @@ suppressPackageStartupMessages({
 ```{r Load-Data}
 # Loading in the final seurat object from the celltypes script "/data/user/tchowton/220804_YoderSC/Scripts/220822_YoderSC_06_celltypes.Rmd"
 alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220830_YoderSC_06-pc2-final.rds")
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220825_YoderSC_06-ift88-final.rds")
 
 dim(alldata) 
 # ift88 - 20405 20625
@@ -108,6 +109,8 @@ seurat_obj_receiver <- subset(alldata, idents = receiver)
 # Because I only have the receiver cell type in this object, I can set the Ident to  "type"
 seurat_obj_receiver <- SetIdent(seurat_obj_receiver, value = seurat_obj_receiver[["type"]])
 
+condition_oi <- "Mutant"
+condition_reference <- "Wildtype"
 
 # DGE to see which genes are differentially expressed in the mutant res macros vs ctl. These will end up being the putative downstream targets of the receptors
 DE_table_receiver <- FindMarkers(object = seurat_obj_receiver, ident.1 = condition_oi, ident.2 = condition_reference, min.pct = 0.10) %>% rownames_to_column("gene")
@@ -145,7 +148,7 @@ ligand_activities
 
 #The number of top-ranked ligands that are further used to predict active target genes and construct an active ligand-receptor network is here 20.
 
-best_upstream_ligands = ligand_activities %>% top_n(40, pearson) %>% arrange(-pearson) %>% pull(test_ligand) %>% unique()
+best_upstream_ligands <- ligand_activities %>% top_n(40, pearson) %>% arrange(-pearson) %>% pull(test_ligand) %>% unique()
 
 #These ligands are expressed by one or more of the input sender cells. To see which cell population expresses which of these top-ranked ligands, you can run the following:
 pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220831_best-upstream-ligands.pdf", width = 15, height = 10)
@@ -167,10 +170,6 @@ rownames(active_ligand_target_links) <- rownames(active_ligand_target_links) %>%
 colnames(active_ligand_target_links) <- colnames(active_ligand_target_links) %>% make.names() # make.names() for heatmap visualization of genes like H2-T23
 
 vis_ligand_target <- active_ligand_target_links[order_targets,order_ligands] %>% t()
-
-View(vis_ligand_target)
-class(vis_ligand_target)
-
 
 p_ligand_target_network <- vis_ligand_target %>% make_heatmap_ggplot("Prioritized ligands","Predicted target genes", color = "purple",legend_position = "top", x_axis_position = "top",legend_title = "Regulatory potential")  + theme(axis.text.x = element_text(face = "italic")) + scale_fill_gradient2(low = "whitesmoke",  high = "purple", breaks = c(0,0.0045,0.0090))
 
@@ -196,22 +195,22 @@ lr_network_top_df <- lr_network_top_df_large %>% spread("from","weight",fill = 0
 lr_network_top_matrix <- lr_network_top_df %>% select(-to) %>% as.matrix() %>% magrittr::set_rownames(lr_network_top_df$to)
 
 # perform hierarchical clustering to order the ligands and receptors
-dist_receptors = dist(lr_network_top_matrix, method = "binary")
-hclust_receptors = hclust(dist_receptors, method = "ward.D2")
-order_receptors = hclust_receptors$labels[hclust_receptors$order]
+dist_receptors <- dist(lr_network_top_matrix, method = "binary")
+hclust_receptors <- hclust(dist_receptors, method = "ward.D2")
+order_receptors <- hclust_receptors$labels[hclust_receptors$order]
     
-dist_ligands = dist(lr_network_top_matrix %>% t(), method = "binary")
-hclust_ligands = hclust(dist_ligands, method = "ward.D2")
-order_ligands_receptor = hclust_ligands$labels[hclust_ligands$order]
+dist_ligands <- dist(lr_network_top_matrix %>% t(), method = "binary")
+hclust_ligands <- hclust(dist_ligands, method = "ward.D2")
+order_ligands_receptor <- hclust_ligands$labels[hclust_ligands$order]
 
-order_receptors = order_receptors %>% intersect(rownames(lr_network_top_matrix))
-order_ligands_receptor = order_ligands_receptor %>% intersect(colnames(lr_network_top_matrix))
+order_receptors <- order_receptors %>% intersect(rownames(lr_network_top_matrix))
+order_ligands_receptor <- order_ligands_receptor %>% intersect(colnames(lr_network_top_matrix))
 
-vis_ligand_receptor_network = lr_network_top_matrix[order_receptors, order_ligands_receptor]
-rownames(vis_ligand_receptor_network) = order_receptors %>% make.names()
-colnames(vis_ligand_receptor_network) = order_ligands_receptor %>% make.names()
+vis_ligand_receptor_network <- lr_network_top_matrix[order_receptors, order_ligands_receptor]
+rownames(vis_ligand_receptor_network) <- order_receptors %>% make.names()
+colnames(vis_ligand_receptor_network) <- order_ligands_receptor %>% make.names()
 
-p_ligand_receptor_network = vis_ligand_receptor_network %>% t() %>% make_heatmap_ggplot("Ligands","Receptors", color = "mediumvioletred", x_axis_position = "top",legend_title = "Prior interaction potential")
+p_ligand_receptor_network <- vis_ligand_receptor_network %>% t() %>% make_heatmap_ggplot("Ligands","Receptors", color = "mediumvioletred", x_axis_position = "top",legend_title = "Prior interaction potential")
 
 pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220901_ligand-receptor.pdf", width = 15, height = 10)
 p_ligand_receptor_network
@@ -221,32 +220,32 @@ dev.off()
 Receptors of top-ranked ligands, but after considering only bona fide ligand-receptor interactions documented in literature and publicly available databases. Here, bona fide means that the PPI of the ligand - receptor pair is in a lr database. Otherwise the pair is only classified as a PPI and not a ligand-receptor interaction.
 
 ```{r}
-lr_network_strict = lr_network %>% filter(database != "ppi_prediction_go" & database != "ppi_prediction")
-ligands_bona_fide = lr_network_strict %>% pull(from) %>% unique()
-receptors_bona_fide = lr_network_strict %>% pull(to) %>% unique()
+lr_network_strict <- lr_network %>% filter(database != "ppi_prediction_go" & database != "ppi_prediction")
+ligands_bona_fide <- lr_network_strict %>% pull(from) %>% unique()
+receptors_bona_fide <- lr_network_strict %>% pull(to) %>% unique()
 
-lr_network_top_df_large_strict = lr_network_top_df_large %>% distinct(from,to) %>% inner_join(lr_network_strict, by = c("from","to")) %>% distinct(from,to)
-lr_network_top_df_large_strict = lr_network_top_df_large_strict %>% inner_join(lr_network_top_df_large, by = c("from","to"))
+lr_network_top_df_large_strict <- lr_network_top_df_large %>% distinct(from,to) %>% inner_join(lr_network_strict, by = c("from","to")) %>% distinct(from,to)
+lr_network_top_df_large_strict <- lr_network_top_df_large_strict %>% inner_join(lr_network_top_df_large, by = c("from","to"))
 
-lr_network_top_df_strict = lr_network_top_df_large_strict %>% spread("from","weight",fill = 0)
-lr_network_top_matrix_strict = lr_network_top_df_strict %>% select(-to) %>% as.matrix() %>% magrittr::set_rownames(lr_network_top_df_strict$to)
+lr_network_top_df_strict <- lr_network_top_df_large_strict %>% spread("from","weight",fill = 0)
+lr_network_top_matrix_strict <- lr_network_top_df_strict %>% select(-to) %>% as.matrix() %>% magrittr::set_rownames(lr_network_top_df_strict$to)
 
-dist_receptors = dist(lr_network_top_matrix_strict, method = "binary")
-hclust_receptors = hclust(dist_receptors, method = "ward.D2")
-order_receptors = hclust_receptors$labels[hclust_receptors$order]
+dist_receptors <- dist(lr_network_top_matrix_strict, method = "binary")
+hclust_receptors <- hclust(dist_receptors, method = "ward.D2")
+order_receptors <- hclust_receptors$labels[hclust_receptors$order]
 
-dist_ligands = dist(lr_network_top_matrix_strict %>% t(), method = "binary")
-hclust_ligands = hclust(dist_ligands, method = "ward.D2")
-order_ligands_receptor = hclust_ligands$labels[hclust_ligands$order]
+dist_ligands <- dist(lr_network_top_matrix_strict %>% t(), method = "binary")
+hclust_ligands <- hclust(dist_ligands, method = "ward.D2")
+order_ligands_receptor <- hclust_ligands$labels[hclust_ligands$order]
 
-order_receptors = order_receptors %>% intersect(rownames(lr_network_top_matrix_strict))
-order_ligands_receptor = order_ligands_receptor %>% intersect(colnames(lr_network_top_matrix_strict))
+order_receptors <- order_receptors %>% intersect(rownames(lr_network_top_matrix_strict))
+order_ligands_receptor <- order_ligands_receptor %>% intersect(colnames(lr_network_top_matrix_strict))
 
-vis_ligand_receptor_network_strict = lr_network_top_matrix_strict[order_receptors, order_ligands_receptor]
-rownames(vis_ligand_receptor_network_strict) = order_receptors %>% make.names()
-colnames(vis_ligand_receptor_network_strict) = order_ligands_receptor %>% make.names()
+vis_ligand_receptor_network_strict <- lr_network_top_matrix_strict[order_receptors, order_ligands_receptor]
+rownames(vis_ligand_receptor_network_strict) <- order_receptors %>% make.names()
+colnames(vis_ligand_receptor_network_strict) <- order_ligands_receptor %>% make.names()
 
-p_ligand_receptor_network_strict = vis_ligand_receptor_network_strict %>% t() %>% make_heatmap_ggplot("Ligands","Receptors", color = "mediumvioletred", x_axis_position = "top",legend_title = "Prior interaction potential\n(bona fide)")
+p_ligand_receptor_network_strict <- vis_ligand_receptor_network_strict %>% t() %>% make_heatmap_ggplot("Ligands","Receptors", color = "mediumvioletred", x_axis_position = "top",legend_title = "Prior interaction potential\n(bona fide)")
 
 pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220901_ligand-receptor-strict.pdf", width = 5, height = 5)
 p_ligand_receptor_network_strict
@@ -281,17 +280,17 @@ ligand_activities_de <- ligand_activities %>% select(test_ligand, pearson) %>% r
 ligand_activities_de[is.na(ligand_activities_de)] <- 0
 
 # make LFC heatmap
-lfc_matrix = ligand_activities_de  %>% select(-ligand, -pearson) %>% as.matrix() %>% magrittr::set_rownames(ligand_activities_de$ligand)
-rownames(lfc_matrix) = rownames(lfc_matrix) %>% make.names()
+lfc_matrix <- ligand_activities_de  %>% select(-ligand, -pearson) %>% as.matrix() %>% magrittr::set_rownames(ligand_activities_de$ligand)
+rownames(lfc_matrix) <- rownames(lfc_matrix) %>% make.names()
 
-order_ligands = order_ligands[order_ligands %in% rownames(lfc_matrix)]
-vis_ligand_lfc = lfc_matrix[order_ligands,]
+order_ligands <- order_ligands[order_ligands %in% rownames(lfc_matrix)]
+vis_ligand_lfc <- lfc_matrix[order_ligands,]
 
-colnames(vis_ligand_lfc) = vis_ligand_lfc %>% colnames() %>% make.names()
+colnames(vis_ligand_lfc) <- vis_ligand_lfc %>% colnames() %>% make.names()
 
 p_ligand_lfc <- vis_ligand_lfc %>% make_threecolor_heatmap_ggplot("Prioritized ligands","LFC in Sender", low_color = "midnightblue",mid_color = "white", mid = median(vis_ligand_lfc), high_color = "red",legend_position = "top", x_axis_position = "top", legend_title = "LFC") + theme(axis.text.y = element_text(face = "italic"))
 
-pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220901_LFC-in-sender.pdf", width = 5, height = 10)
+pdf("/data/user/tchowton/220804_YoderSC/Figures/ift88-nichenet/220913_LFC-in-senders.pdf", width = 5, height = 10)
 p_ligand_lfc
 dev.off()
 
@@ -343,7 +342,13 @@ combined_plot
 ### Exploring Gas6-Axl
 
 ```{r}
-### Expression levels in PTCs for Gas6
+### Expression levels in PTCs for Gas6 - pc2
+
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220830_YoderSC_06-pc2-final.rds")
+
+alldataPTC <- subset(alldata, idents = c("Proximal_Tubule_S1_Cells",
+                                         "Proximal_Tubule_S2_Cells",
+                                         "Proximal_Tubule_S3_Cells"))
 
 alldataPTCS1 <- subset(alldata, idents = "Proximal_Tubule_S1_Cells")
 alldataPTCS2 <- subset(alldata, idents = "Proximal_Tubule_S2_Cells")
@@ -359,6 +364,34 @@ VlnPlot(alldataPTCS1, features = "Gas6", pt.size = 0.2)
 VlnPlot(alldataPTCS2, features = "Gas6", pt.size = 0.2)
 VlnPlot(alldataPTCS3, features = "Gas6", pt.size = 0.2)
 
+pdf("/data/user/tchowton/220804_YoderSC/Figures/pc2-nichenet/220912_gas6-expression.pdf", width = 5, height = 10)
+ VlnPlot(alldataPTC, features = "Gas6", split.by = "type")
+dev.off()
+
+### Expression levels in PTCs for Gas6 - ift88
+
+alldata <- readRDS("/data/user/tchowton/220804_YoderSC/Data/ProcessedData/220825_YoderSC_06-ift88-final.rds")
+
+alldataPTC <- subset(alldata, idents = c("Proximal_Tubule_S1_Cells",
+                                         "Proximal_Tubule_S2_Cells",
+                                         "Proximal_Tubule_S3_Cells"))
+
+alldataPTCS2 <- subset(alldata, idents = "Proximal_Tubule_S2_Cells")
+alldataPTCS3 <- subset(alldata, idents = "Proximal_Tubule_S3_Cells")
+Idents(alldataPTC)
+
+alldataPTCS <- SetIdent(alldataPTCS1, value = "type")
+alldataPTCS2 <- SetIdent(alldataPTCS2, value = "type")
+alldataPTCS3 <- SetIdent(alldataPTCS3, value = "type")
+
+
+VlnPlot(alldataPTCS1, features = "Gas6", pt.size = 0.2)
+VlnPlot(alldataPTCS2, features = "Gas6", pt.size = 0.2)
+VlnPlot(alldataPTCS3, features = "Gas6", pt.size = 0.2, log = TRUE)
+
+pdf("/data/user/tchowton/220804_YoderSC/Figures/ift88-nichenet/220912_gas6-expression.pdf", width = 5, height = 10)
+ VlnPlot(alldataPTC, features = "Gas6", split.by = "type")
+dev.off()
 
 ```
 

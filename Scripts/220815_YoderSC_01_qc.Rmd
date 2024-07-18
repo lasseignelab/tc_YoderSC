@@ -38,7 +38,7 @@ create_seurat_objects <- function(path){
   #For loop to read in the data from the CellRanger output and create a cooresponding Seurat object. 
   for (sample in input_list) {
     # Reads in the data. the sample variable here is to distinguish between the data directories from the STARsolo output
-    seurat_data <- Read10X(data.dir = paste0(path, sample, "/outs/filtered_feature_bc_matrix/"))
+    seurat_data <- Read10X(data.dir = paste0(path, sample, "/filtered_feature_bc_matrix/"))
     
     # Creates the Seurat object for the sample. Sets the project to the sample name.
     seurat_obj <- CreateSeuratObject(counts = seurat_data,
@@ -67,12 +67,12 @@ pc2_ko_1$type = "Mutant"
 pc2_ko_2$type = "Mutant"
 
 # Merge datasets into one single seurat object ift88
-alldata <- merge(ift88_wt_1,
+alldata_ift88 <- merge(ift88_wt_1,
                  c(ift88_wt_2, ift88_ko_1, ift88_ko_2),
                  add.cell.ids = c("ift88_wt_1", "ift88_wt_2", "ift88_ko_1", "ift88_ko_2"))
 
 # Merge datasets into one single seurat object pc2
-alldata <- merge(pc2_wt_1,
+alldata_pc2 <- merge(pc2_wt_1,
                  c(pc2_wt_2, pc2_ko_1, pc2_ko_2),
                  add.cell.ids = c("pc2_wt_1", "pc2_wt_2", "pc2_ko_1", "pc2_ko_2"))
 
@@ -89,10 +89,16 @@ head(alldata@meta.data, 10)
 
 ```{r Calc-QC}
 # Calculate the mitochondrial read percentage
-alldata <- PercentageFeatureSet(alldata, "^mt-", col.name = "percent_mito")
+alldata_ift88 <- PercentageFeatureSet(alldata_ift88, "^mt-", col.name = "percent_mito")
 
 # Calculate the ribosamal read percentage
-alldata <- PercentageFeatureSet(alldata, "^Rp[sl]", col.name = "percent_ribo")
+alldata_ift88 <- PercentageFeatureSet(alldata_ift88, "^Rp[sl]", col.name = "percent_ribo")
+
+# Calculate the mitochondrial read percentage
+alldata_pc2 <- PercentageFeatureSet(alldata_pc2, "^mt-", col.name = "percent_mito")
+
+# Calculate the ribosamal read percentage
+alldata_pc2 <- PercentageFeatureSet(alldata_pc2, "^Rp[sl]", col.name = "percent_ribo")
 
 ```
 
@@ -113,12 +119,20 @@ dev.off()
 
 ```{r Filtering}
 # Filter by cell number and feature number
-selected_c <- WhichCells(alldata, expression = nFeature_RNA > 200)
-selected_f <- rownames(alldata)[Matrix::rowSums(alldata) > 3]
+selected_c <- WhichCells(alldata_ift88, expression = nFeature_RNA > 200)
+selected_f <- rownames(alldata_ift88)[Matrix::rowSums(alldata_ift88) > 3]
 
-data.filt <- subset(alldata, features = selected_f, cells = selected_c)
-dim(data.filt) # 20522 35354
-dim(alldata) # 31053 37576
+data.filt_ift88 <- subset(alldata_ift88, features = selected_f, cells = selected_c)
+dim(data.filt_ift88) # 20522 35354
+dim(alldata_ift88) # 31053 37576
+
+# Filter by cell number and feature number
+selected_c <- WhichCells(alldata_pc2, expression = nFeature_RNA > 200)
+selected_f <- rownames(alldata_pc2)[Matrix::rowSums(alldata_pc2) > 3]
+
+data.filt_pc2 <- subset(alldata_pc2, features = selected_f, cells = selected_c)
+dim(data.filt_pc2) # 20522 35354
+dim(alldata_pc2) # 31053 37576
 
 # pc2
 # [1] 20005 18799
@@ -137,16 +151,30 @@ dev.off()
 ```
 
 ```{r}
-selected_mito <- WhichCells(data.filt, expression = percent_mito < 20)
-selected_ribo <- WhichCells(data.filt, expression = percent_ribo > 5)
+selected_mito <- WhichCells(data.filt_ift88, expression = percent_mito < 20)
+selected_ribo <- WhichCells(data.filt_ift88, expression = percent_ribo > 5)
 
 # and subset the object to only keep those cells
-data.filt <- subset(data.filt, cells = selected_mito)
-data.filt <- subset(data.filt, cells = selected_ribo)
+data.filt_ift88 <- subset(data.filt_ift88, cells = selected_mito)
+data.filt_ift88 <- subset(data.filt_ift88, cells = selected_ribo)
 
-dim(data.filt)
+dim(data.filt_ift88)
+#[1] 20521 20625
 
-table(data.filt$orig.ident)
+table(data.filt_ift88$orig.ident)
+# ift88_ko_1 ift88_ko_2 ift88_wt_1 ift88_wt_2 
+#       5047       5444       5058       5076
+
+selected_mito <- WhichCells(data.filt_pc2, expression = percent_mito < 20)
+selected_ribo <- WhichCells(data.filt_pc2, expression = percent_ribo > 5)
+
+# and subset the object to only keep those cells
+data.filt_pc2 <- subset(data.filt_pc2, cells = selected_mito)
+data.filt_pc2 <- subset(data.filt_pc2, cells = selected_ribo)
+
+dim(data.filt_pc2)
+
+table(data.filt_pc2$orig.ident)
 
 # pc2
 # [1] 20005 10688
@@ -162,15 +190,57 @@ As the level of expression of mitochondrial and MALAT1 genes are judged as mainl
 dim(data.filt)
 
 # Filter MALAT1
-data.filt <- data.filt[!grepl("Malat1", rownames(data.filt)), ]
+data.filt_ift88 <- data.filt_ift88[!grepl("Malat1", rownames(data.filt_ift88)), ]
 
 # Filter Mitocondrial
-data.filt <- data.filt[!grepl("^mt-", rownames(data.filt)), ]
+data.filt_ift88 <- data.filt_ift88[!grepl("^mt-", rownames(data.filt_ift88)), ]
 
 # Filter Ribossomal gene (optional if that is a problem on your data) data.filt
-data.filt <- data.filt[ ! grepl('^Rp[sl]', rownames(data.filt)), ]
+data.filt_ift88 <- data.filt_ift88[ ! grepl('^Rp[sl]', rownames(data.filt_ift88)), ]
 
-dim(data.filt)
+dim(data.filt_ift88)
+#20404 20625
+
+
+# Filter MALAT1
+data.filt_pc2 <- data.filt_pc2[!grepl("Malat1", rownames(data.filt_pc2)), ]
+
+# Filter Mitocondrial
+data.filt_pc2 <- data.filt_pc2[!grepl("^mt-", rownames(data.filt_pc2)), ]
+
+# Filter Ribossomal gene (optional if that is a problem on your data) data.filt
+data.filt_pc2 <- data.filt_pc2[ ! grepl('^Rp[sl]', rownames(data.filt_pc2)), ]
+
+dim(data.filt_pc2)
+#19893 10688
+
+# > mean(data.filt_ift88@meta.data$nCount_RNA)
+# [1] 4247.003
+# > mean(data.filt_ift88@meta.data$nFeature_RNA)
+# [1] 1874.096
+# > mean(data.filt_pc2@meta.data$nCount_RNA)
+# [1] 4696.562
+# > mean(data.filt_pc2@meta.data$nFeature_RNA)
+# [1] 2008.494
+
+metadata_ift88 <- data.filt_ift88@meta.data
+metadata_pc2 <- data.filt_pc2@meta.data
+
+metadata_ift88$cells <- rownames(metadata_ift88)
+
+metadata_ift88$sample <- NA
+metadata_ift88$sample[which(str_detect(metadata_ift88$cells, "^ift88_wt*"))] <- "ctrl"
+metadata_ift88$sample[which(str_detect(metadata_ift88$cells, "ko_"))] <- "mut"
+
+metadata_ift88 %>%
+  ggplot(aes(x=sample, fill=sample)) + 
+  geom_bar() +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  ggtitle("NCells")
+
+
 ```
 
 ### Cell Cycle Scoring
